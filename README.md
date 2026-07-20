@@ -55,8 +55,8 @@ When fallback/cached data is served, the UI shows: *"Data may be delayed"*.
 ### Setup
 
 ```bash
-git clone https://github.com/G10rga/wc2026_fantasy.git
-cd wc2026_fantasy
+git clone https://github.com/G10rga/Fantasy-World-cup-2026.git
+cd Fantasy-World-cup-2026
 
 python -m venv .venv
 
@@ -144,7 +144,7 @@ No keys needed for worldcup26.ir or openfootball JSON.
 ## Project Structure
 
 ```
-wc2026_fantasy/
+Fantasy-World-cup-2026/
 ├── app/
 │   ├── auth/           # Login, register, session
 │   ├── fantasy/        # Squad, transfers, scoring, boosters, APIs
