@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Squad Builder — WC2026 Fantasy{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Squad Builder</h1>
+    <div class="budget-bar">
+        Budget&nbsp; <span id="budget-remaining">$100.0m</span>
+        <span style="color:var(--card-border)">|</span>
+        <span id="squad-count" style="color:var(--chalk-muted)">0 / 15</span>
+    </div>
+</div>
+
+<div class="squad-builder-layout">
+    <aside class="filter-panel">
+        <h3>Filters</h3>
+        <div class="form-group">
+            <label>Position</label>
+            <select id="filter-position">
+                <option value="">All positions</option>
+                <option value="GK">Goalkeeper</option>
+                <option value="DEF">Defender</option>
+                <option value="MID">Midfielder</option>
+                <option value="FWD">Forward</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Country</label>
+            <select id="filter-country"><option value="">All countries</option></select>
+        </div>
+        <div class="form-group">
+            <label>Max price ($m)</label>
+            <input type="number" id="filter-price" step="0.5" min="4" max="15" placeholder="e.g. 12">
+        </div>
+        <div class="form-group">
+            <label>Sort by</label>
+            <select id="filter-sort">
+                <option value="total_pts">Total points</option>
+                <option value="price">Price</option>
+                <option value="name">Name</option>
+                <option value="form_avg">Form</option>
+                <option value="selected_by_pct">Selected %</option>
+                <option value="this_matchday_pts">This matchday</option>
+            </select>
+        </div>
+        <button class="btn btn-primary" id="filter-apply" style="width:100%;justify-content:center">Apply</button>
+    </aside>
+
+    <section class="player-grid" id="player-grid">
+        <div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--chalk-muted)">Loading players…</div>
+    </section>
+
+    <aside class="pitch-panel">
+        <h3>Your Squad</h3>
+        <div class="pitch" id="pitch-view" style="min-height:260px;margin-bottom:12px"></div>
+        <div class="bench" id="bench-view" style="padding:12px;margin-bottom:16px">
+            <div style="font-family:var(--font-display);font-size:12px;letter-spacing:2px;color:var(--chalk-muted);margin-bottom:8px">BENCH</div>
+        </div>
+        <div class="captain-select">
+            <label>Captain</label>
+            <select id="captain-select"><option value="">— Select —</option></select>
+            <label>Vice Captain</label>
+            <select id="vice-select"><option value="">— Select —</option></select>
+        </div>
+        <button class="btn btn-success" id="save-squad" style="width:100%;justify-content:center;margin-top:8px">Save Squad</button>
+        <div id="save-msg" class="error-msg"></div>
+    </aside>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/squad_builder.js') }}"></script>
+{% endblock %}

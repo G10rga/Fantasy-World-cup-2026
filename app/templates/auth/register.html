@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Register — WC2026 Fantasy{% endblock %}
+{% block content %}
+<div class="auth-form" style="max-width:460px">
+    <div style="margin-bottom:24px">
+        <div style="font-family:var(--font-display);font-size:13px;letter-spacing:2px;color:var(--gold);margin-bottom:6px">WC2026 FANTASY</div>
+        <h1>Create account</h1>
+        <p style="color:var(--chalk-muted);font-size:14px;margin-top:6px">Pick your squad, join leagues, compete globally</p>
+    </div>
+    <form id="register-form" autocomplete="on">
+        <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" placeholder="you@example.com" required autocomplete="email">
+        </div>
+        <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" placeholder="At least 3 characters" required minlength="3" autocomplete="username">
+        </div>
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" placeholder="At least 8 characters" required minlength="8" autocomplete="new-password">
+        </div>
+        <div class="form-group">
+            <label for="password_confirm">Confirm password</label>
+            <input type="password" id="password_confirm" name="password_confirm" placeholder="Repeat your password" required autocomplete="new-password">
+        </div>
+        <div class="form-group">
+            <label for="supported_nation_id">Supported nation</label>
+            <select id="supported_nation_id" name="supported_nation_id">
+                <option value="">— Choose your team —</option>
+            </select>
+        </div>
+        <div id="error-msg" class="error-msg"></div>
+        <button type="submit" class="btn btn-primary">Create account</button>
+    </form>
+    <p>Already registered? <a href="/login">Sign in</a></p>
+</div>
+
+<script>
+async function loadCountries() {
+    const res = await fetch('/api/countries');
+    const data = await res.json();
+    const select = document.getElementById('supported_nation_id');
+    if (data.success) {
+        data.countries.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.id;
+            opt.textContent = c.name;
+            select.appendChild(opt);
+        });
+    }
+}
+loadCountries();
+
+document.getElementById('register-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector('button[type=submit]');
+    const pw = document.getElementById('password').value;
+    const pwc = document.getElementById('password_confirm').value;
+    if (pw !== pwc) {
+        document.getElementById('error-msg').textContent = 'Passwords do not match.';
+        return;
+    }
+    btn.textContent = 'Creating…';
+    btn.disabled = true;
+    const nationVal = document.getElementById('supported_nation_id').value;
+    try {
+        const res = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                email: document.getElementById('email').value,
+                username: document.getElementById('username').value,
+                password: pw,
+                password_confirm: pwc,
+                supported_nation_id: nationVal ? parseInt(nationVal) : null,
+            }),
+        });
+        const data = await res.json();
+        if (data.success) {
+            window.location.href = '/';
+        } else {
+            document.getElementById('error-msg').textContent = data.message;
+            btn.textContent = 'Create account';
+            btn.disabled = false;
+        }
+    } catch {
+        document.getElementById('error-msg').textContent = 'Network error. Try again.';
+        btn.textContent = 'Create account';
+        btn.disabled = false;
+    }
+});
+</script>
+{% endblock %}

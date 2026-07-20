@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Fixtures — WC2026 Fantasy{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Fixtures</h1>
+    <div class="form-group inline" style="margin-bottom:0;margin-left:auto">
+        <label>Matchday</label>
+        <select id="filter-matchday" style="width:auto">
+            <option value="">All</option>
+        </select>
+        <label>Stage</label>
+        <select id="filter-stage" style="width:auto">
+            <option value="">All</option>
+            <option value="group">Group Stage</option>
+            <option value="RO32">Round of 32</option>
+            <option value="QF">Quarter-finals</option>
+            <option value="SF">Semi-finals</option>
+            <option value="F">Final</option>
+        </select>
+    </div>
+</div>
+
+<div id="fixtures-list">
+    <div style="text-align:center;padding:60px;color:var(--chalk-muted)">Loading fixtures…</div>
+</div>
+
+<script>
+async function loadFixtures() {
+    const md = document.getElementById('filter-matchday').value;
+    const stage = document.getElementById('filter-stage').value;
+    let url = '/api/fixtures?';
+    if (md) url += `matchday=${md}&`;
+    if (stage) url += `stage=${stage}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    const container = document.getElementById('fixtures-list');
+    if (!data.success) {
+        container.innerHTML = '<div style="text-align:center;padding:60px;color:var(--chalk-muted)">Could not load fixtures.</div>';
+        return;
+    }
+
+    const matchdays = [...new Set(data.fixtures.map(f => f.matchday))].sort((a,b) => a-b);
+    const mdSelect = document.getElementById('filter-matchday');
+    if (mdSelect.options.length <= 1) {
+        matchdays.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m;
+            opt.textContent = `MD ${m}`;
+            mdSelect.appendChild(opt);
+        });
+    }
+
+    if (!data.fixtures.length) {
+        container.innerHTML = '<div style="text-align:center;padding:60px;color:var(--chalk-muted)">No fixtures match your filters.</div>';
+        return;
+    }
+
+    // Group by matchday
+    const groups = {};
+    data.fixtures.forEach(f => {
+        if (!groups[f.matchday]) groups[f.matchday] = [];
+        groups[f.matchday].push(f);
+    });
+
+    container.innerHTML = Object.entries(groups).map(([md, fixtures]) => `
+        <div style="margin-bottom:28px">
+            <div style="font-family:var(--font-display);font-size:13px;letter-spacing:2px;color:var(--chalk-muted);margin-bottom:12px;padding:0 4px">
+                MATCHDAY ${md}
+            </div>
+            ${fixtures.map(f => `
+                <div class="fixture-card ${f.status === 'LIVE' ? 'live' : ''}">
+                    <span class="fixture-stage">${f.stage}</span>
+                    <div class="fixture-teams">
+                        <span style="text-align:right;min-width:140px">${f.home_team?.name || 'TBD'}</span>
+                        <span class="fixture-score">${f.home_score ?? '–'}&nbsp;:&nbsp;${f.away_score ?? '–'}</span>
+                        <span style="text-align:left;min-width:140px">${f.away_team?.name || 'TBD'}</span>
+                    </div>
+                    <span class="fixture-status">${f.status}</span>
+                    <span class="fixture-time">${f.kickoff_utc ? new Date(f.kickoff_utc).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '—'}</span>
+                </div>
+            `).join('')}
+        </div>
+    `).join('');
+}
+
+document.getElementById('filter-matchday').addEventListener('change', loadFixtures);
+document.getElementById('filter-stage').addEventListener('change', loadFixtures);
+loadFixtures();
+setInterval(loadFixtures, 60000);
+</script>
+{% endblock %}

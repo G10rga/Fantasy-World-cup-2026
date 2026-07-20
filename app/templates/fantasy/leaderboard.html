@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}Leaderboard — WC2026 Fantasy{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Leaderboard</h1>
+    <div class="tabs" style="margin-left:auto">
+        <button class="tab active" data-tab="overall">Overall</button>
+        <button class="tab" data-tab="country">By Country</button>
+        <button class="tab" data-tab="matchday">By Matchday</button>
+    </div>
+</div>
+
+<div id="tab-overall" class="tab-content" style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--r-lg);padding:20px">
+    <table class="data-table" id="overall-table">
+        <thead>
+            <tr>
+                <th style="width:60px">Rank</th>
+                <th>Manager</th>
+                <th>Nation</th>
+                <th style="text-align:right">Points</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td colspan="4" style="text-align:center;color:var(--chalk-muted);padding:40px">Loading…</td></tr>
+        </tbody>
+    </table>
+    <div class="pagination" id="overall-pagination"></div>
+</div>
+
+<div id="tab-country" class="tab-content" style="display:none">
+    <div style="margin-bottom:16px">
+        <select id="country-select" style="width:240px">
+            <option value="">Select a country</option>
+        </select>
+    </div>
+    <div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--r-lg);padding:20px">
+        <table class="data-table" id="country-table">
+            <thead><tr><th style="width:60px">Rank</th><th>Manager</th><th style="text-align:right">Points</th></tr></thead>
+            <tbody><tr><td colspan="3" style="text-align:center;color:var(--chalk-muted);padding:40px">Select a country above</td></tr></tbody>
+        </table>
+    </div>
+</div>
+
+<div id="tab-matchday" class="tab-content" style="display:none">
+    <div style="margin-bottom:16px">
+        <select id="matchday-select" style="width:160px">
+            <option value="1">Matchday 1</option>
+        </select>
+    </div>
+    <div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--r-lg);padding:20px">
+        <table class="data-table" id="matchday-table">
+            <thead><tr><th style="width:60px">Rank</th><th>Manager</th><th style="text-align:right">Points</th></tr></thead>
+            <tbody><tr><td colspan="3" style="text-align:center;color:var(--chalk-muted);padding:40px">Loading…</td></tr></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function medal(rank) {
+    if (rank === 1) return '🥇';
+    if (rank === 2) return '🥈';
+    if (rank === 3) return '🥉';
+    return rank;
+}
+
+async function loadOverall(page = 1) {
+    const res = await fetch(`/api/leaderboard/overall?page=${page}&limit=50`);
+    const data = await res.json();
+    const tbody = document.querySelector('#overall-table tbody');
+    tbody.innerHTML = data.leaderboard.map(r => `
+        <tr>
+            <td style="font-family:var(--font-mono);font-size:13px">${medal(r.rank)}</td>
+            <td style="font-weight:600">${r.username}</td>
+            <td style="color:var(--chalk-muted)">${r.supported_nation?.name || '—'}</td>
+            <td style="text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--gold)">${r.total_points}</td>
+        </tr>
+    `).join('');
+    const pag = document.getElementById('overall-pagination');
+    pag.innerHTML =
+        `<span>Page ${data.page} of ${data.pages}</span>` +
+        (data.page > 1 ? `<button onclick="loadOverall(${data.page-1})">← Prev</button>` : '') +
+        (data.page < data.pages ? `<button onclick="loadOverall(${data.page+1})">Next →</button>` : '');
+}
+
+async function loadCountries() {
+    const res = await fetch('/api/countries');
+    const data = await res.json();
+    const select = document.getElementById('country-select');
+    data.countries.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = c.name;
+        select.appendChild(opt);
+    });
+}
+
+async function loadCountryLeaderboard(countryId) {
+    const res = await fetch(`/api/leaderboard/country/${countryId}`);
+    const data = await res.json();
+    document.querySelector('#country-table tbody').innerHTML = data.leaderboard.map(r => `
+        <tr>
+            <td style="font-family:var(--font-mono)">${medal(r.rank)}</td>
+            <td style="font-weight:600">${r.username}</td>
+            <td style="text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--gold)">${r.total_points}</td>
+        </tr>
+    `).join('');
+}
+
+async function loadMatchdayLeaderboard(md) {
+    const res = await fetch(`/api/leaderboard/matchday/${md}`);
+    const data = await res.json();
+    document.querySelector('#matchday-table tbody').innerHTML = data.leaderboard.map(r => `
+        <tr>
+            <td style="font-family:var(--font-mono)">${medal(r.rank)}</td>
+            <td style="font-weight:600">${r.username}</td>
+            <td style="text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--gold)">${r.matchday_points}</td>
+        </tr>
+    `).join('');
+}
+
+document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+        tab.classList.add('active');
+        document.getElementById('tab-' + tab.dataset.tab).style.display = 'block';
+    });
+});
+
+document.getElementById('country-select').addEventListener('change', e => {
+    if (e.target.value) loadCountryLeaderboard(e.target.value);
+});
+document.getElementById('matchday-select').addEventListener('change', e => {
+    loadMatchdayLeaderboard(e.target.value);
+});
+
+loadOverall();
+loadCountries();
+loadMatchdayLeaderboard(1);
+</script>
+{% endblock %}

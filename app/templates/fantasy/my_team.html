@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}My Team — WC2026 Fantasy{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>My Team</h1>
+    <div id="live-indicator" class="live-badge" style="display:none">LIVE</div>
+    <div class="matchday-points">
+        Matchday pts&nbsp;&nbsp;<span id="md-points">0</span>
+    </div>
+</div>
+
+<div class="my-team-layout">
+    <div class="pitch" id="team-pitch">
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.15);font-family:var(--font-display);font-size:14px;letter-spacing:2px;pointer-events:none" id="pitch-placeholder">LOADING SQUAD…</div>
+    </div>
+    <div class="bench" id="team-bench">
+        <div style="font-family:var(--font-display);font-size:14px;letter-spacing:2px;color:var(--chalk-muted);margin-bottom:12px">BENCH</div>
+    </div>
+    <aside class="team-sidebar">
+        <h3>Captaincy</h3>
+        <div id="captain-widget" style="font-size:14px;color:var(--chalk-muted)">—</div>
+        <h3>Live Points</h3>
+        <ul id="live-points-list">
+            <li style="color:var(--chalk-muted);font-size:13px">No live data</li>
+        </ul>
+    </aside>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/live_points.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Login — WC2026 Fantasy{% endblock %}
+{% block content %}
+<div class="auth-form">
+    <div style="margin-bottom:24px">
+        <div style="font-family:var(--font-display);font-size:13px;letter-spacing:2px;color:var(--gold);margin-bottom:6px">WC2026 FANTASY</div>
+        <h1>Welcome back</h1>
+        <p style="color:var(--chalk-muted);font-size:14px;margin-top:6px">Sign in to manage your squad</p>
+    </div>
+    <form id="login-form" autocomplete="on">
+        <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" placeholder="you@example.com" required autocomplete="email">
+        </div>
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" placeholder="••••••••" required autocomplete="current-password">
+        </div>
+        <div id="error-msg" class="error-msg"></div>
+        <button type="submit" class="btn btn-primary">Sign in</button>
+    </form>
+    <p>No account yet? <a href="/register">Create one</a></p>
+</div>
+
+<script>
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector('button[type=submit]');
+    btn.textContent = 'Signing in…';
+    btn.disabled = true;
+    try {
+        const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                email: document.getElementById('email').value,
+                password: document.getElementById('password').value,
+            }),
+        });
+        const data = await res.json();
+        if (data.success) {
+            window.location.href = '/';
+        } else {
+            document.getElementById('error-msg').textContent = data.message;
+            btn.textContent = 'Sign in';
+            btn.disabled = false;
+        }
+    } catch {
+        document.getElementById('error-msg').textContent = 'Network error. Try again.';
+        btn.textContent = 'Sign in';
+        btn.disabled = false;
+    }
+});
+</script>
+{% endblock %}

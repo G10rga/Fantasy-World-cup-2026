@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}Mini Leagues - WC2026 Fantasy{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Mini Leagues</h1>
+    <button class="btn btn-primary" id="create-league-btn">Create League</button>
+    <button class="btn btn-secondary" id="join-league-btn">Join League</button>
+</div>
+
+<div id="leagues-list"></div>
+
+<div id="create-modal" class="modal" style="display:none">
+    <div class="modal-content">
+        <h3>Create League</h3>
+        <input type="text" id="league-name" placeholder="League name">
+        <label><input type="checkbox" id="league-public"> Public league</label>
+        <button class="btn btn-primary" id="confirm-create">Create</button>
+        <button class="btn" id="cancel-create">Cancel</button>
+    </div>
+</div>
+
+<div id="join-modal" class="modal" style="display:none">
+    <div class="modal-content">
+        <h3>Join League</h3>
+        <input type="text" id="league-code" placeholder="6-char invite code" maxlength="6">
+        <button class="btn btn-primary" id="confirm-join">Join</button>
+        <button class="btn" id="cancel-join">Cancel</button>
+    </div>
+</div>
+
+<div id="standings-panel" style="display:none">
+    <h2 id="standings-title"></h2>
+    <table class="data-table" id="standings-table">
+        <thead><tr><th>Rank</th><th>User</th><th>Points</th></tr></thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<script>
+async function loadLeagues() {
+    const res = await fetch('/api/leagues');
+    const data = await res.json();
+    const container = document.getElementById('leagues-list');
+    if (!data.success) {
+        container.innerHTML = '<p>Please <a href="/login">login</a> to view leagues.</p>';
+        return;
+    }
+    container.innerHTML = data.leagues.map(l => `
+        <div class="league-card" data-id="${l.id}">
+            <h3>${l.name}</h3>
+            <p>Code: <strong>${l.code}</strong> | Members: ${l.member_count}</p>
+            <p>Your rank: ${l.my_rank || '—'} (${l.my_points || 0} pts)</p>
+            <button class="btn btn-sm view-standings" data-id="${l.id}">View Standings</button>
+        </div>
+    `).join('');
+
+    document.querySelectorAll('.view-standings').forEach(btn => {
+        btn.addEventListener('click', () => loadStandings(btn.dataset.id));
+    });
+}
+
+async function loadStandings(leagueId) {
+    const res = await fetch(`/api/leagues/${leagueId}/standings`);
+    const data = await res.json();
+    document.getElementById('standings-panel').style.display = 'block';
+    document.getElementById('standings-title').textContent = data.league.name + ' Standings';
+    document.querySelector('#standings-table tbody').innerHTML = data.standings.map(s => `
+        <tr><td>${s.rank || '—'}</td><td>${s.username}</td><td>${s.points}</td></tr>
+    `).join('');
+}
+
+document.getElementById('create-league-btn').onclick = () => {
+    document.getElementById('create-modal').style.display = 'flex';
+};
+document.getElementById('cancel-create').onclick = () => {
+    document.getElementById('create-modal').style.display = 'none';
+};
+document.getElementById('confirm-create').onclick = async () => {
+    const res = await fetch('/api/leagues', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            name: document.getElementById('league-name').value,
+            is_public: document.getElementById('league-public').checked,
+        }),
+    });
+    const data = await res.json();
+    if (data.success) {
+        document.getElementById('create-modal').style.display = 'none';
+        loadLeagues();
+    }
+};
+
+document.getElementById('join-league-btn').onclick = () => {
+    document.getElementById('join-modal').style.display = 'flex';
+};
+document.getElementById('cancel-join').onclick = () => {
+    document.getElementById('join-modal').style.display = 'none';
+};
+document.getElementById('confirm-join').onclick = async () => {
+    const res = await fetch('/api/leagues/join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: document.getElementById('league-code').value }),
+    });
+    const data = await res.json();
+    if (data.success) {
+        document.getElementById('join-modal').style.display = 'none';
+        loadLeagues();
+    } else {
+        alert(data.message);
+    }
+};
+
+loadLeagues();
+</script>
+{% endblock %}
