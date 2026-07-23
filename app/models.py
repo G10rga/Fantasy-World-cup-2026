@@ -107,6 +107,9 @@ class Player(db.Model):
     match_stats = db.relationship("PlayerMatchStat", back_populates="player", lazy="dynamic")
 
     def to_dict(self, extra=None):
+        photo = self.photo_url
+        if not photo and self.api_football_id:
+            photo = f"https://media.api-sports.io/football/players/{self.api_football_id}.png"
         data = {
             "id": self.id,
             "name": self.name,
@@ -114,7 +117,7 @@ class Player(db.Model):
             "country_id": self.country_id,
             "country": self.country.to_dict() if self.country else None,
             "price": float(self.price),
-            "photo_url": self.photo_url,
+            "photo_url": photo,
             "total_fantasy_points": self.total_fantasy_points,
             "selected_by_pct": float(self.selected_by_pct),
             "is_available": self.is_available,

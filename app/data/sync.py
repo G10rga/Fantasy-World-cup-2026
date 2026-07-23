@@ -171,6 +171,103 @@ def _sync_wc26_players_from_football_data(wc26_countries) -> tuple[int, str | No
     return synced, "football-data.org"
 
 
+PHOTO_CDN = "https://media.api-sports.io/football/players/{}.png"
+
+
+def _af_team_payload(entry: dict) -> dict:
+    """Normalize API-Football team list entry to a team dict."""
+    if not entry:
+        return {}
+    if entry.get("team"):
+        return entry.get("team") or {}
+    return entry
+
+
+def sync_player_photos(*, force: bool = False) -> dict:
+    """Match API-Football WC squads and store player photo URLs.
+
+    Uses ~1 call for teams + 1 call per national team (cached). Images themselves
+    are free on media.api-sports.io and do not consume API quota.
+    """
+    af = ApiFootballClient()
+    if not af.api_key:
+        return {"updated": 0, "warning": "API_FOOTBALL_KEY not set"}
+
+    missing = Player.query.filter(Player.photo_url.is_(None)).count()
+    if not force and missing == 0:
+        return {"updated": 0, "skipped": True, "reason": "all players already have photos"}
+
+    quota = ApiFootballClient.get_quota_usage()
+    if quota["remaining"] < 10:
+        return {"updated": 0, "warning": f"API-Football quota too low ({quota['remaining']} left)"}
+
+    teams = af.get_teams()
+    if not teams:
+        return {"updated": 0, "warning": "No API-Football WC teams returned"}
+
+    updated = 0
+    linked = 0
+    teams_matched = 0
+
+    for entry in teams:
+        team = _af_team_payload(entry)
+        team_id = team.get("id")
+        if not team_id:
+            continue
+
+        country = None
+        if team.get("code"):
+            country = Country.query.filter(
+                db.func.lower(Country.code) == str(team.get("code")).lower()
+            ).first()
+        if not country:
+            country = _find_country_by_name(team.get("name") or "")
+        if not country and team.get("country"):
+            country = _find_country_by_name(team.get("country"))
+        if not country:
+            logger.debug("No country match for AF team %s", team.get("name"))
+            continue
+
+        if team.get("flag") and not country.flag_url:
+            country.flag_url = team.get("flag")
+
+        teams_matched += 1
+        squad = af.get_squad(team_id) or []
+        for member in squad:
+            api_id = member.get("id")
+            name = member.get("name") or ""
+            if not api_id:
+                continue
+            position = ApiFootballClient.map_position(member.get("position"))
+            photo = member.get("photo") or PHOTO_CDN.format(api_id)
+
+            player = _find_player_for_api_stat(api_id, name, country.id, position)
+            if not player:
+                continue
+
+            changed = False
+            if not player.api_football_id:
+                player.api_football_id = api_id
+                linked += 1
+                changed = True
+            if force or not player.photo_url:
+                player.photo_url = photo
+                updated += 1
+                changed = True
+            if changed:
+                pass
+
+        db.session.commit()
+
+    return {
+        "updated": updated,
+        "linked": linked,
+        "teams_matched": teams_matched,
+        "source": "api-football",
+        "quota": ApiFootballClient.get_quota_usage(),
+    }
+
+
 def _normalize_name(name: str) -> str:
     n = (name or "").strip().lower()
     n = re.sub(r"\s+", " ", n)
@@ -468,10 +565,14 @@ def sync_countries_and_players() -> dict:
     db.session.commit()
     update_selected_by_percentages()
 
+    photos = sync_player_photos()
+    db.session.commit()
+
     result = {
         "countries": len(team_map),
         "players": wc26_players_query().count(),
         "players_synced": players_synced,
+        "photos": photos,
         "source": "worldcup26.ir",
     }
     if player_source:

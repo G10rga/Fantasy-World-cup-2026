@@ -24,14 +24,14 @@ function playerChip(ftp, live = {}, opts = {}) {
   const mult = live.multiplier || ftp.multiplier || 1;
   const isCap = opts.isCaptain;
   const isVice = opts.isVice;
-  const photo = p.photo_url || '';
   const border = isCap ? 'border-primary shadow-[0_0_15px_rgba(229,195,99,0.3)]' : 'border-[#1C2333]';
+  const avatar = typeof playerAvatarHtml === 'function'
+    ? playerAvatarHtml(p, 'w-12 h-12 md:w-16 md:h-16')
+    : `<div class="w-12 h-12 md:w-16 md:h-16 rounded-full bg-surface-elevated flex items-center justify-center"><span class="material-symbols-outlined text-on-surface-variant">person</span></div>`;
   return `
     <div class="flex flex-col items-center relative group cursor-pointer" data-player-id="${ftp.player_id}">
-      <div class="w-12 h-12 md:w-16 md:h-16 rounded-full bg-surface-elevated border-2 ${border} shadow-lg overflow-hidden relative flex items-center justify-center">
-        ${photo
-          ? `<img class="w-full h-full object-cover" src="${photo}" alt="" onerror="this.remove()">`
-          : `<span class="material-symbols-outlined text-on-surface-variant">person</span>`}
+      <div class="rounded-full border-2 ${border} shadow-lg overflow-hidden relative flex items-center justify-center">
+        ${avatar}
         ${isCap ? '<div class="absolute inset-0 bg-gradient-to-b from-primary/30 to-transparent pointer-events-none"></div>' : ''}
       </div>
       ${isCap ? '<div class="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-stat-md text-xs font-bold shadow-md z-10">C</div>' : ''}
@@ -111,10 +111,8 @@ function renderBench(team) {
     const p = ftp.player || {};
     return `
       <div class="flex flex-col items-center min-w-[72px]">
-        <div class="w-12 h-12 rounded-full bg-surface-elevated border-2 border-outline-variant overflow-hidden flex items-center justify-center">
-          ${p.photo_url
-            ? `<img src="${p.photo_url}" class="w-full h-full object-cover" alt="" onerror="this.remove()">`
-            : `<span class="material-symbols-outlined text-outline-variant text-sm">${p.position || '?'}</span>`}
+        <div class="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center">
+          ${typeof playerAvatarHtml === 'function' ? playerAvatarHtml(p, 'w-12 h-12') : `<span class="material-symbols-outlined text-outline-variant text-sm">${p.position || '?'}</span>`}
         </div>
         <span class="text-[10px] font-bold mt-2 text-on-surface">${shortName(p.name)}</span>
         <span class="text-[10px] font-stat-md text-on-surface-variant">${p.position}</span>

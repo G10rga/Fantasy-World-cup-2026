@@ -211,17 +211,12 @@ function detectFormationFromStarters() {
 function renderPlayerRow(player) {
   const inSquad = squad.some((p) => p.id === player.id);
   const code = (player.country?.fifa_code || player.country?.code || player.country?.name || '').toString().slice(0, 3).toUpperCase();
-  const photo = player.photo_url || '';
   const sq = squad.find((p) => p.id === player.id);
   const role = sq ? (sq.is_starting ? 'XI' : 'Bench') : '';
   return `
     <div class="flex items-center justify-between p-3 rounded-xl ${inSquad ? 'bg-surface-elevated border border-primary/40' : 'bg-surface-container-low border border-transparent'} hover:border-outline-variant hover:bg-surface-elevated transition-colors mb-2 group">
       <div class="flex items-center gap-3 min-w-0">
-        <div class="w-10 h-10 rounded-full bg-surface-variant border border-outline overflow-hidden flex-shrink-0 flex items-center justify-center">
-          ${photo
-            ? `<img alt="" class="w-full h-full object-cover" src="${photo}" onerror="this.parentElement.innerHTML='<span class=\\'material-symbols-outlined text-outline-variant\\'>person</span>'">`
-            : `<span class="material-symbols-outlined text-outline-variant">person</span>`}
-        </div>
+        ${playerAvatarHtml(player, 'w-10 h-10')}
         <div class="min-w-0">
           <div class="font-bold text-sm text-on-surface group-hover:text-primary transition-colors truncate">${player.name}</div>
           <div class="flex items-center gap-2 text-xs text-on-surface-variant mt-0.5">
@@ -234,7 +229,7 @@ function renderPlayerRow(player) {
       <div class="flex items-center gap-4 flex-shrink-0">
         <div class="text-right">
           <div class="font-stat-md text-primary font-bold text-sm">$${player.price}m</div>
-          <div class="text-xs text-on-surface-variant">${player.total_pts} pts</div>
+          <div class="text-xs text-on-surface-variant">${player.total_pts ?? player.total_fantasy_points ?? 0} pts</div>
         </div>
         <button type="button" class="w-8 h-8 rounded ${inSquad ? 'bg-danger/20 text-danger hover:bg-danger/30' : 'bg-surface-variant hover:bg-primary-container hover:text-on-primary-container text-on-surface'} flex items-center justify-center transition-colors border border-outline-variant"
                 onclick="${inSquad ? 'removePlayer' : 'addPlayer'}(${player.id})">
@@ -308,28 +303,20 @@ function emptyBenchSlot(pos, locked) {
 }
 
 function filledSlot(player) {
-  const photo = player.photo_url || '';
   return `
     <button type="button" class="flex flex-col items-center" onclick="removePlayer(${player.id})" title="Remove ${player.name}">
-      <div class="w-14 h-14 md:w-16 md:h-16 rounded-full bg-surface-elevated border-2 border-primary flex items-center justify-center shadow-lg relative hover:scale-105 transition-transform overflow-hidden">
-        ${photo
-          ? `<img src="${photo}" class="w-full h-full object-cover" alt="" onerror="this.remove()">`
-          : `<span class="material-symbols-outlined text-primary">person</span>`}
-        <div class="absolute -bottom-2 bg-surface px-2 py-0.5 rounded text-[10px] font-stat-md border border-outline-variant text-primary">$${player.price}</div>
+      <div class="relative rounded-full border-2 border-primary shadow-lg overflow-hidden">
+        ${playerAvatarHtml(player, 'w-14 h-14 md:w-16 md:h-16')}
+        <div class="absolute -bottom-0.5 left-1/2 -translate-x-1/2 bg-surface px-2 py-0.5 rounded text-[10px] font-stat-md border border-outline-variant text-primary whitespace-nowrap z-10">$${player.price}</div>
       </div>
       <span class="text-xs font-bold mt-3 bg-surface/80 px-2 py-1 rounded">${shortName(player.name)}</span>
     </button>`;
 }
 
 function filledBenchSlot(player) {
-  const photo = player.photo_url || '';
   return `
     <button type="button" class="flex flex-col items-center" onclick="removePlayer(${player.id})" title="Remove ${player.name}">
-      <div class="w-12 h-12 rounded-full bg-surface-elevated border-2 border-primary/60 flex items-center justify-center relative overflow-hidden hover:border-danger transition-colors">
-        ${photo
-          ? `<img src="${photo}" class="w-full h-full object-cover" alt="" onerror="this.remove()">`
-          : `<span class="material-symbols-outlined text-primary text-sm">person</span>`}
-      </div>
+      ${playerAvatarHtml(player, 'w-12 h-12')}
       <span class="text-[10px] font-bold mt-2 text-on-surface-variant">${shortName(player.name)}</span>
       <span class="text-[9px] text-outline-variant">${player.position}</span>
     </button>`;

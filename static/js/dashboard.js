@@ -92,10 +92,9 @@ function renderMiniPitch(players) {
   });
   const chip = (ftp, border = 'border-on-surface') => {
     const p = ftp.player || {};
-    const label = posLabel(p.position);
     return `
       <div class="flex flex-col items-center">
-        <div class="w-8 h-8 rounded-full bg-surface-elevated border-2 ${border} flex items-center justify-center font-stat-md text-xs">${label}</div>
+        <div class="rounded-full border-2 ${border} overflow-hidden">${typeof playerAvatarHtml === 'function' ? playerAvatarHtml(p, 'w-8 h-8') : `<div class="w-8 h-8 rounded-full bg-surface-elevated flex items-center justify-center font-stat-md text-xs">${posLabel(p.position)}</div>`}</div>
         <span class="bg-surface-elevated/80 px-1 mt-1 rounded text-[10px] font-stat-md">${shortName(p.name)}</span>
       </div>`;
   };

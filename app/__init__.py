@@ -131,6 +131,12 @@ def create_app(config_name=None):
                         print(f"AUTO_SYNC: fixtures {fixtures_result}", flush=True)
                     else:
                         print("AUTO_SYNC: skipped (players already present)", flush=True)
+                        from app.data.sync import sync_player_photos
+                        missing_photos = Player.query.filter(Player.photo_url.is_(None)).count()
+                        if missing_photos > 0:
+                            print(f"AUTO_SYNC: fetching photos for {missing_photos} players…", flush=True)
+                            photo_result = sync_player_photos()
+                            print(f"AUTO_SYNC: photos {photo_result}", flush=True)
                 except Exception as exc:
                     db.session.rollback()
                     print(f"AUTO_SEED/SYNC failed: {exc}", flush=True)
@@ -235,6 +241,12 @@ def register_cli(app):
         from app.data.sync import sync_countries_and_players
         result = sync_countries_and_players()
         click.echo(f"Synced: {result}")
+
+    @app.cli.command("sync-photos")
+    def sync_photos_cmd():
+        from app.data.sync import sync_player_photos
+        result = sync_player_photos(force=True)
+        click.echo(f"Photos: {result}")
 
     @app.cli.command("sync-fixtures")
     def sync_fixtures_cmd():
