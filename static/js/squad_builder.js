@@ -7,6 +7,7 @@ const BUDGET = 100.0;
 let squad = [];
 let allPlayers = [];
 let searchQuery = '';
+let activeSlotPos = null;
 
 function positionCount(pos) {
   return squad.filter((p) => p.position === pos).length;
@@ -74,22 +75,34 @@ function renderPlayerGrid(players) {
     const q = searchQuery.toLowerCase();
     list = list.filter((p) => p.name.toLowerCase().includes(q));
   }
+  // When filling a pitch slot, show available buys first
+  if (activeSlotPos) {
+    list = [...list].sort((a, b) => {
+      const aIn = squad.some((p) => p.id === a.id) ? 1 : 0;
+      const bIn = squad.some((p) => p.id === b.id) ? 1 : 0;
+      return aIn - bIn;
+    });
+  }
   const grid = document.getElementById('player-grid');
   if (!list.length) {
-    grid.innerHTML = '<div class="text-center py-16 text-on-surface-variant font-body-sm">No players found</div>';
+    grid.innerHTML = `<div class="text-center py-16 text-on-surface-variant font-body-sm">${activeSlotPos ? `No ${activeSlotPos} players found` : 'No players found'}</div>`;
     return;
   }
-  grid.innerHTML = list.map(renderPlayerRow).join('');
+  const hint = activeSlotPos
+    ? `<div class="px-2 py-2 mb-1 text-xs text-primary font-label-caps tracking-wide">Select a ${activeSlotPos} for your squad</div>`
+    : '';
+  grid.innerHTML = hint + list.map(renderPlayerRow).join('');
 }
 
 function emptySlot(pos) {
+  const active = activeSlotPos === pos;
   return `
-    <div class="flex flex-col items-center">
-      <div class="w-14 h-14 md:w-16 md:h-16 rounded-full bg-surface-elevated border-2 border-dashed border-outline-variant flex items-center justify-center shadow-lg cursor-default">
-        <span class="material-symbols-outlined text-outline-variant">add</span>
+    <button type="button" class="flex flex-col items-center group" onclick="selectSlot('${pos}')" title="Add ${pos}">
+      <div class="w-14 h-14 md:w-16 md:h-16 rounded-full bg-surface-elevated border-2 border-dashed ${active ? 'border-primary bg-primary/10' : 'border-outline-variant group-hover:border-primary'} flex items-center justify-center shadow-lg cursor-pointer transition-colors">
+        <span class="material-symbols-outlined ${active ? 'text-primary' : 'text-outline-variant group-hover:text-primary'}">add</span>
       </div>
-      <span class="text-xs font-medium mt-3 text-outline-variant">${pos === 'FWD' ? 'FWD' : pos === 'MID' ? 'MID' : pos === 'DEF' ? 'DEF' : 'GK'}</span>
-    </div>`;
+      <span class="text-xs font-medium mt-3 ${active ? 'text-primary' : 'text-outline-variant'}">${pos}</span>
+    </button>`;
 }
 
 function filledSlot(player) {
@@ -145,6 +158,30 @@ function updateCaptainSelects() {
   if (viceVal) viceSel.value = viceVal;
 }
 
+function updatePosChips(pos) {
+  document.querySelectorAll('.pos-chip').forEach((b) => {
+    const selected = (b.dataset.pos || '') === (pos || '');
+    b.classList.toggle('bg-primary-container', selected);
+    b.classList.toggle('text-on-primary-container', selected);
+    b.classList.toggle('bg-surface-variant', !selected);
+    b.classList.toggle('text-on-surface', !selected);
+    b.classList.toggle('border', !selected);
+    b.classList.toggle('border-outline-variant', !selected);
+  });
+  document.getElementById('filter-position').value = pos || '';
+}
+
+window.selectSlot = function (pos) {
+  activeSlotPos = pos;
+  updatePosChips(pos);
+  loadPlayers();
+  const panel = document.getElementById('player-grid');
+  if (panel && window.matchMedia('(max-width: 1023px)').matches) {
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  renderPitch();
+};
+
 window.addPlayer = function (id) {
   const player = allPlayers.find((p) => p.id === id);
   if (!player) return;
@@ -162,6 +199,12 @@ window.addPlayer = function (id) {
     is_starting: isStarting,
     bench_order: isStarting ? null : squad.filter((p) => !p.is_starting).length + 1,
   });
+
+  const visualMax = { GK: 1, DEF: 5, MID: 5, FWD: 3 };
+  if (activeSlotPos === player.position) {
+    const filled = squad.filter((p) => p.is_starting && p.position === player.position).length;
+    if (filled >= (visualMax[player.position] || 0)) activeSlotPos = null;
+  }
   refresh();
 };
 
@@ -239,14 +282,11 @@ document.getElementById('filter-country').addEventListener('change', loadPlayers
 
 document.querySelectorAll('.pos-chip').forEach((btn) => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.pos-chip').forEach((b) => {
-      b.classList.remove('bg-primary-container', 'text-on-primary-container');
-      b.classList.add('bg-surface-variant', 'text-on-surface', 'border', 'border-outline-variant');
-    });
-    btn.classList.add('bg-primary-container', 'text-on-primary-container');
-    btn.classList.remove('bg-surface-variant', 'text-on-surface', 'border', 'border-outline-variant');
-    document.getElementById('filter-position').value = btn.dataset.pos || '';
+    const pos = btn.dataset.pos || '';
+    activeSlotPos = pos || null;
+    updatePosChips(pos);
     loadPlayers();
+    renderPitch();
   });
 });
 
