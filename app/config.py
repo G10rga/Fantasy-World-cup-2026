@@ -48,10 +48,8 @@ class Config:
         (3, 5, 2),
         (4, 3, 3),
         (4, 4, 2),
-        (4, 5, 1),
         (5, 2, 3),
         (5, 3, 2),
-        (5, 4, 1),
     ]
     BUDGET_GROUP_STAGE = 100.0
     BUDGET_KNOCKOUT = 105.0
