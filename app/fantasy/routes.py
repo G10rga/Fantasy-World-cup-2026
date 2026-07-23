@@ -97,6 +97,14 @@ def list_players():
         query = query.filter(Player.price <= Decimal(str(max_price)))
 
     players = query.all()
+
+    # Lazily backfill a handful of missing headshots on each browse
+    try:
+        from app.data.sync import ensure_player_photos
+        ensure_player_photos([p for p in players if p.photo_url is None], limit=12)
+    except Exception:
+        current_app.logger.exception("ensure_player_photos failed for player list")
+
     fixture_ids = [
         f.id for f in wc26_fixtures_query().filter_by(matchday=matchday).all()
     ]
@@ -144,6 +152,27 @@ def list_players():
         results.sort(key=lambda x: x.get(sort_key, 0), reverse=reverse)
 
     return _success({"players": results, "matchday": matchday})
+
+
+@fantasy_bp.route("/api/photos/sync", methods=["POST"])
+def sync_photos_now():
+    """Kick a photo backfill batch (used after deploy / debugging)."""
+    from app.data.sync import ensure_player_photos, sync_player_photos
+
+    batch = sync_player_photos(batch_size=30)
+    raw_ids = (request.get_json(silent=True) or {}).get("player_ids") or []
+    ensured = 0
+    if raw_ids:
+        players = Player.query.filter(Player.id.in_(raw_ids)).all()
+        ensured = ensure_player_photos(players, limit=len(players))
+    missing = Player.query.filter(Player.photo_url.is_(None)).count()
+    with_photo = Player.query.filter(Player.photo_url.isnot(None), Player.photo_url != "").count()
+    return _success({
+        "batch": batch,
+        "ensured": ensured,
+        "with_photo": with_photo,
+        "missing": missing,
+    })
 
 
 def _get_form_points(player_id: int, n: int) -> list[int]:
@@ -199,6 +228,14 @@ def player_history(player_id):
 def get_team():
     matchday = request.args.get("matchday", type=int) or get_current_matchday()
     team = get_or_create_team(current_user, matchday)
+    # Pull headshots for this squad immediately so the pitch isn't initials-only
+    try:
+        from app.data.sync import ensure_player_photos
+        roster = [ftp.player for ftp in team.squad_players if ftp.player]
+        ensure_player_photos(roster, limit=15)
+        db.session.refresh(team)
+    except Exception:
+        current_app.logger.exception("ensure_player_photos failed for team")
     return _success({"team": team.to_dict(), "matchday": matchday})
 
 

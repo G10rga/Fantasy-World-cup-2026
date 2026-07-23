@@ -194,13 +194,15 @@ def _thesportsdb_photo(player_name: str, nationality: str | None = None) -> str 
         response = requests.get(
             THESPORTSDB_SEARCH,
             params={"p": player_name},
+            headers={"User-Agent": "wc2026-fantasy/1.0"},
             timeout=20,
         )
         if response.status_code >= 400:
+            logger.warning("TheSportsDB HTTP %s for %s", response.status_code, player_name)
             return None
         rows = (response.json() or {}).get("player") or []
     except Exception as exc:
-        logger.debug("TheSportsDB lookup failed for %s: %s", player_name, exc)
+        logger.warning("TheSportsDB lookup failed for %s: %s", player_name, exc)
         return None
 
     nationality_l = (nationality or "").strip().lower()
@@ -222,6 +224,51 @@ def _thesportsdb_photo(player_name: str, nationality: str | None = None) -> str 
         else:
             soft.append(photo)
     return (exact or soft or [None])[0]
+
+
+def ensure_player_photos(players: list, *, limit: int = 20) -> int:
+    """Fetch and store headshots for specific players (used by API on demand)."""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    # Resolve relationships here (app context) before handing work to threads
+    todo: list[tuple[Player, str | None]] = []
+    for player in players:
+        if player is None or player.photo_url is not None:
+            continue
+        nation = player.country.name if player.country else None
+        todo.append((player, nation))
+        if len(todo) >= limit:
+            break
+    if not todo:
+        return 0
+
+    def fetch_one(item: tuple[Player, str | None]):
+        player, nation = item
+        photo = _thesportsdb_photo(player.name, nation)
+        return player.id, photo or ""
+
+    results: dict[int, str] = {}
+    workers = min(8, len(todo))
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = [pool.submit(fetch_one, item) for item in todo]
+        for fut in as_completed(futures):
+            try:
+                pid, photo = fut.result()
+                results[pid] = photo
+            except Exception as exc:
+                logger.warning("ensure_player_photos worker failed: %s", exc)
+
+    updated = 0
+    by_id = {p.id: p for p, _ in todo}
+    for pid, photo in results.items():
+        player = by_id.get(pid)
+        if not player:
+            continue
+        player.photo_url = photo
+        if photo:
+            updated += 1
+    db.session.commit()
+    return updated
 
 
 def _find_player_loose(api_player_id: int, player_name: str, country_id: int, position: str) -> Player | None:
@@ -267,13 +314,14 @@ def sync_player_photos(*, force: bool = False, batch_size: int = 60) -> dict:
 
     # 1) TheSportsDB for this batch
     for player in missing_players:
-        if player.photo_url and not force:
+        if player.photo_url is not None and not force:
             continue
         nation = player.country.name if player.country else None
         photo = _thesportsdb_photo(player.name, nation)
-        time.sleep(0.25)
+        time.sleep(0.2)
+        # Empty string = attempted, no photo found (so we don't retry forever)
+        player.photo_url = photo or ""
         if photo:
-            player.photo_url = photo
             updated += 1
             tsdb_hits += 1
     db.session.commit()

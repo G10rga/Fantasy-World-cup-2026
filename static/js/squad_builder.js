@@ -20,6 +20,7 @@ let allPlayers = [];
 let searchQuery = '';
 /** @type {null | { kind: 'xi'|'bench', pos: string }} */
 let activeSlot = null;
+let photoRetryDone = false;
 
 function formationSlots() {
   const f = FORMATIONS[formationKey];
@@ -598,6 +599,25 @@ async function loadExistingTeam() {
       if (data.team.captain_id) document.getElementById('captain-select').value = data.team.captain_id;
       if (data.team.vice_captain_id) document.getElementById('vice-select').value = data.team.vice_captain_id;
       refresh();
+
+      // If any roster photos are still missing, ask server to fetch them then reload once
+      const missing = squad.filter((p) => !p.photo_url).map((p) => p.id);
+      if (missing.length && !photoRetryDone) {
+        photoRetryDone = true;
+        fetch('/api/photos/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ player_ids: missing }),
+        })
+          .then((r) => r.json())
+          .then((photoData) => {
+            if (photoData.success && (photoData.ensured > 0 || photoData.with_photo > 0)) {
+              loadExistingTeam();
+            }
+          })
+          .catch(() => {});
+      }
     }
   } catch (_) { /* guest */ }
 }

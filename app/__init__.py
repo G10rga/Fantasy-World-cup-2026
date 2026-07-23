@@ -158,7 +158,7 @@ def create_app(config_name=None):
 
                         threading.Thread(
                             target=_photo_worker,
-                            args=(flask_app._get_current_object(),),
+                            args=(flask_app,),
                             daemon=True,
                             name="photo-sync",
                         ).start()
