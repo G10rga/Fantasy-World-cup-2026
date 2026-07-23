@@ -416,7 +416,11 @@ def _apply_wc26_game(
     except (TypeError, ValueError):
         pass
     fixture.stage = WorldCup26Client.map_stage(game.get("type"))
-    fixture.group_name = game.get("group")
+    raw_group = game.get("group")
+    if raw_group is not None:
+        fixture.group_name = str(raw_group).strip()[:32] or None
+    else:
+        fixture.group_name = None
     try:
         fixture.home_score = int(game["home_score"]) if game.get("home_score") not in (None, "null", "") else None
         fixture.away_score = int(game["away_score"]) if game.get("away_score") not in (None, "null", "") else None

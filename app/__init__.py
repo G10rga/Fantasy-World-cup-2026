@@ -108,17 +108,32 @@ def create_app(config_name=None):
             )
             if should_seed:
                 try:
-                    from app.models import Country
+                    from app.models import Country, Player
+                    from app.data.sync import (
+                        seed_database,
+                        sync_countries_and_players,
+                        sync_fixtures,
+                    )
+
                     if Country.query.count() == 0:
-                        from app.data.sync import seed_database
                         print("AUTO_SEED: seeding empty database…", flush=True)
                         result = seed_database()
                         print(f"AUTO_SEED: completed {result}", flush=True)
                         flask_app.logger.info("AUTO_SEED completed: %s", result)
                     else:
                         print("AUTO_SEED: skipped (countries already present)", flush=True)
+
+                    if Player.query.count() == 0:
+                        print("AUTO_SYNC: loading players…", flush=True)
+                        players_result = sync_countries_and_players()
+                        print(f"AUTO_SYNC: players {players_result}", flush=True)
+                        fixtures_result = sync_fixtures()
+                        print(f"AUTO_SYNC: fixtures {fixtures_result}", flush=True)
+                    else:
+                        print("AUTO_SYNC: skipped (players already present)", flush=True)
                 except Exception as exc:
-                    print(f"AUTO_SEED failed: {exc}", flush=True)
+                    db.session.rollback()
+                    print(f"AUTO_SEED/SYNC failed: {exc}", flush=True)
                     flask_app.logger.exception("AUTO_SEED failed")
 
     if not flask_app.config.get("TESTING"):

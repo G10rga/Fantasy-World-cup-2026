@@ -141,7 +141,7 @@ class Fixture(db.Model):
     football_data_id = db.Column(db.Integer, unique=True, nullable=True, index=True)
     worldcup26_id = db.Column(db.String(20), unique=True, nullable=True, index=True)
     api_football_id = db.Column(db.Integer, unique=True, nullable=True, index=True)
-    group_name = db.Column(db.String(4), nullable=True)
+    group_name = db.Column(db.String(32), nullable=True)
 
     home_team = db.relationship("Country", foreign_keys=[home_team_id])
     away_team = db.relationship("Country", foreign_keys=[away_team_id])
