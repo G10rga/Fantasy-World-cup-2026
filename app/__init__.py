@@ -77,6 +77,26 @@ def create_app(config_name=None):
     register_cli(flask_app)
     register_page_routes(flask_app)
 
+    # Create/upgrade schema without needing Render Shell
+    if not flask_app.config.get("TESTING") and flask_app.config.get("AUTO_MIGRATE"):
+        with flask_app.app_context():
+            try:
+                from flask_migrate import upgrade
+                upgrade()
+                flask_app.logger.info("Database migrations applied")
+            except Exception:
+                flask_app.logger.exception("AUTO_MIGRATE failed")
+
+            if flask_app.config.get("AUTO_SEED"):
+                try:
+                    from app.models import Country
+                    if Country.query.count() == 0:
+                        from app.data.sync import seed_database
+                        result = seed_database()
+                        flask_app.logger.info("AUTO_SEED completed: %s", result)
+                except Exception:
+                    flask_app.logger.exception("AUTO_SEED failed")
+
     if not flask_app.config.get("TESTING"):
         from app.data.scheduler import init_scheduler
         init_scheduler(flask_app)

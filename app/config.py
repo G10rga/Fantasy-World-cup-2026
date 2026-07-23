@@ -14,6 +14,9 @@ class Config:
     WTF_CSRF_ENABLED = False  # API uses JSON + session cookies; forms validate via WTForms without CSRF tokens
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
+    # On hosts without Shell (e.g. some Render plans), apply migrations at boot
+    AUTO_MIGRATE = os.environ.get("AUTO_MIGRATE", "0") in ("1", "true", "True", "yes")
+    AUTO_SEED = os.environ.get("AUTO_SEED", "0") in ("1", "true", "True", "yes")
 
     FOOTBALL_DATA_TOKEN = os.environ.get("FOOTBALL_DATA_TOKEN", "")
     API_FOOTBALL_KEY = os.environ.get("API_FOOTBALL_KEY", "")
@@ -124,6 +127,9 @@ class ProductionConfig(Config):
     REMEMBER_COOKIE_SECURE = SESSION_COOKIE_SECURE
     REMEMBER_COOKIE_HTTPONLY = True
     REMEMBER_COOKIE_SAMESITE = SESSION_COOKIE_SAMESITE
+    # Default on in production so empty Postgres gets tables without Shell access
+    AUTO_MIGRATE = os.environ.get("AUTO_MIGRATE", "1") in ("1", "true", "True", "yes")
+    AUTO_SEED = os.environ.get("AUTO_SEED", "1") in ("1", "true", "True", "yes")
 
 
 class TestingConfig(Config):
