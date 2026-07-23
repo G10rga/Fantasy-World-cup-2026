@@ -4,15 +4,22 @@
 <style>
   .squad-main { margin: -16px -16px -24px; }
   @media (min-width: 768px) { .squad-main { margin: -24px -24px -24px; } }
-  @media (min-width: 1024px) { .squad-main { margin: -40px -40px -40px; } }
+  @media (min-width: 1024px) {
+    .squad-main {
+      margin: -40px -40px -40px;
+      height: calc(100dvh - 4rem);
+      max-height: calc(100dvh - 4rem);
+    }
+  }
+  #pitch-view > div { flex-shrink: 0; }
 </style>
 {% endblock %}
 {% block content %}
-<div class="squad-main flex flex-col md:flex-row min-h-[calc(100vh-4rem)] lg:min-h-[calc(100vh-4rem)] overflow-hidden">
+<div class="squad-main flex flex-col lg:flex-row overflow-hidden">
     <!-- Pitch panel -->
-    <section class="w-full md:w-[42%] bg-surface-container-low border-r border-outline-variant flex flex-col relative h-[420px] md:h-auto md:min-h-[640px] overflow-hidden">
+    <section class="w-full lg:w-[42%] bg-surface-container-low border-r border-outline-variant flex flex-col relative shrink-0 overflow-hidden">
         <div class="absolute inset-0 pitch-pattern opacity-80 pointer-events-none"></div>
-        <div class="relative z-10 p-4 flex items-center justify-between border-b border-outline-variant/50 bg-surface-container-low/80">
+        <div class="relative z-10 p-4 flex items-center justify-between border-b border-outline-variant/50 bg-surface-container-low/80 shrink-0">
             <div>
                 <h2 class="font-headline-md text-headline-md uppercase text-on-surface">Your Squad</h2>
                 <p class="font-stat-md text-stat-md text-on-surface-variant mt-1">
@@ -25,8 +32,8 @@
                 SAVE
             </button>
         </div>
-        <div id="pitch-view" class="relative z-10 flex-1 p-md flex flex-col justify-between items-center py-6"></div>
-        <div class="relative z-10 p-4 border-t border-outline-variant/50 bg-surface/80 space-y-3">
+        <div id="pitch-view" class="relative z-10 flex-none lg:flex-1 min-h-0 px-3 py-4 flex flex-col justify-center items-center gap-3 sm:gap-4"></div>
+        <div class="relative z-10 p-4 border-t border-outline-variant/50 bg-surface/80 space-y-3 shrink-0">
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="font-label-caps text-label-caps text-on-surface-variant block mb-1">Captain</label>
@@ -46,7 +53,7 @@
     </section>
 
     <!-- Player list panel -->
-    <section class="w-full md:w-[58%] bg-surface flex flex-col min-h-[480px] relative overflow-hidden">
+    <section class="w-full lg:w-[58%] bg-surface flex flex-col min-h-[420px] lg:min-h-0 lg:h-full relative overflow-hidden">
         <div class="p-md border-b border-outline-variant bg-surface-container z-10 shadow-sm space-y-3">
             <div class="flex gap-2 overflow-x-auto pb-1 no-scrollbar" id="pos-filters">
                 <button type="button" data-pos="" class="pos-chip px-4 py-1.5 rounded-full bg-primary-container text-on-primary-container font-label-caps text-label-caps whitespace-nowrap">ALL</button>
