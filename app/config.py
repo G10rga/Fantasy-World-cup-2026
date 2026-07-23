@@ -14,9 +14,11 @@ class Config:
     WTF_CSRF_ENABLED = False  # API uses JSON + session cookies; forms validate via WTForms without CSRF tokens
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
-    # On hosts without Shell (e.g. some Render plans), apply migrations at boot
-    AUTO_MIGRATE = os.environ.get("AUTO_MIGRATE", "0") in ("1", "true", "True", "yes")
-    AUTO_SEED = os.environ.get("AUTO_SEED", "0") in ("1", "true", "True", "yes")
+    # Default ON when DATABASE_URL is Postgres (Render), even if FLASK_ENV is still "development"
+    _db_url = os.environ.get("DATABASE_URL", "")
+    _default_auto = "1" if _db_url.startswith(("postgres://", "postgresql://")) else "0"
+    AUTO_MIGRATE = os.environ.get("AUTO_MIGRATE", _default_auto) in ("1", "true", "True", "yes")
+    AUTO_SEED = os.environ.get("AUTO_SEED", _default_auto) in ("1", "true", "True", "yes")
 
     FOOTBALL_DATA_TOKEN = os.environ.get("FOOTBALL_DATA_TOKEN", "")
     API_FOOTBALL_KEY = os.environ.get("API_FOOTBALL_KEY", "")

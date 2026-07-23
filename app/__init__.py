@@ -78,23 +78,47 @@ def create_app(config_name=None):
     register_page_routes(flask_app)
 
     # Create/upgrade schema without needing Render Shell
-    if not flask_app.config.get("TESTING") and flask_app.config.get("AUTO_MIGRATE"):
+    should_migrate = (
+        not flask_app.config.get("TESTING")
+        and (
+            flask_app.config.get("AUTO_MIGRATE")
+            or (db_url.startswith("postgres://") or db_url.startswith("postgresql://"))
+        )
+    )
+    if should_migrate:
         with flask_app.app_context():
             try:
                 from flask_migrate import upgrade
+                print("AUTO_MIGRATE: running flask db upgrade…", flush=True)
                 upgrade()
+                print("AUTO_MIGRATE: migrations applied", flush=True)
                 flask_app.logger.info("Database migrations applied")
-            except Exception:
+            except Exception as exc:
+                print(f"AUTO_MIGRATE: upgrade failed ({exc}); falling back to create_all", flush=True)
                 flask_app.logger.exception("AUTO_MIGRATE failed")
+                try:
+                    db.create_all()
+                    print("AUTO_MIGRATE: create_all completed", flush=True)
+                except Exception:
+                    print("AUTO_MIGRATE: create_all also failed", flush=True)
+                    flask_app.logger.exception("create_all failed")
 
-            if flask_app.config.get("AUTO_SEED"):
+            should_seed = flask_app.config.get("AUTO_SEED") or db_url.startswith(
+                ("postgres://", "postgresql://")
+            )
+            if should_seed:
                 try:
                     from app.models import Country
                     if Country.query.count() == 0:
                         from app.data.sync import seed_database
+                        print("AUTO_SEED: seeding empty database…", flush=True)
                         result = seed_database()
+                        print(f"AUTO_SEED: completed {result}", flush=True)
                         flask_app.logger.info("AUTO_SEED completed: %s", result)
-                except Exception:
+                    else:
+                        print("AUTO_SEED: skipped (countries already present)", flush=True)
+                except Exception as exc:
+                    print(f"AUTO_SEED failed: {exc}", flush=True)
                     flask_app.logger.exception("AUTO_SEED failed")
 
     if not flask_app.config.get("TESTING"):
