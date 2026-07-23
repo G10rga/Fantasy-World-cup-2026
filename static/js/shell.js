@@ -4,7 +4,8 @@
   function setActiveNav() {
     document.querySelectorAll('.nav-item').forEach((a) => {
       const href = a.getAttribute('data-nav') || a.getAttribute('href');
-      const active = href === path || (href !== '/' && path.startsWith(href.split('#')[0]));
+      let active = href === path || (href !== '/' && path.startsWith(href.split('#')[0]));
+      if (href === '/' && (path === '/' || path === '/dashboard')) active = true;
       a.classList.toggle('nav-link-active', active);
       a.classList.toggle('nav-link-idle', !active);
       const icon = a.querySelector('.material-symbols-outlined');
@@ -12,7 +13,8 @@
     });
     document.querySelectorAll('.mobile-nav').forEach((a) => {
       const href = a.getAttribute('data-nav') || a.getAttribute('href');
-      const active = href === path || (href !== '/' && path.startsWith(href));
+      let active = href === path || (href !== '/' && path.startsWith(href));
+      if (href === '/' && (path === '/' || path === '/dashboard')) active = true;
       a.classList.toggle('mobile-nav-active', active);
       a.classList.toggle('text-on-surface-variant', !active);
       const icon = a.querySelector('.material-symbols-outlined');

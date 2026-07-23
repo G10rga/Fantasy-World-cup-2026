@@ -1,0 +1,155 @@
+{% extends "auth_base.html" %}
+{% block title %}World Cup Fantasy 2026{% endblock %}
+{% block head %}
+<style>
+  @keyframes welcome-rise {
+    from { opacity: 0; transform: translateY(18px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes welcome-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes welcome-line {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+  }
+  .welcome-rise { animation: welcome-rise 0.7s ease-out both; }
+  .welcome-rise-delay { animation: welcome-rise 0.75s ease-out 0.15s both; }
+  .welcome-rise-delay-2 { animation: welcome-rise 0.75s ease-out 0.3s both; }
+  .welcome-fade { animation: welcome-fade 1.1s ease-out both; }
+  .welcome-line {
+    transform-origin: left;
+    animation: welcome-line 0.9s ease-out 0.35s both;
+  }
+</style>
+{% endblock %}
+{% block body %}
+{# mode: guest | onboard #}
+<header class="fixed top-0 inset-x-0 z-40 flex items-center justify-between px-5 md:px-10 py-4">
+    <a href="/" class="font-headline-md text-headline-md text-primary tracking-wider">WC26 FANTASY</a>
+    <div class="flex items-center gap-3">
+        {% if mode == 'guest' %}
+        <a href="/login" class="font-label-caps text-label-caps text-on-surface hover:text-primary transition-colors">Sign in</a>
+        <a href="/register" class="bg-primary-container text-on-primary-container font-label-caps text-label-caps px-4 py-2 rounded-lg hover:brightness-110 transition-all">Register</a>
+        {% else %}
+        <span class="font-body-sm text-on-surface-variant hidden sm:inline">{{ current_user.username }}</span>
+        <a href="/squad" class="bg-primary-container text-on-primary-container font-label-caps text-label-caps px-4 py-2 rounded-lg hover:brightness-110 transition-all">Build squad</a>
+        {% endif %}
+    </div>
+</header>
+
+<section class="relative min-h-[100dvh] flex flex-col justify-end overflow-hidden">
+    <div class="absolute inset-0 welcome-fade">
+        <div class="absolute inset-0 bg-cover bg-center scale-105"
+             style="background-image: url('https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=1920&q=80')"></div>
+        <div class="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-background/30"></div>
+        <div class="absolute inset-0 bg-gradient-to-r from-background/90 via-transparent to-background/40"></div>
+    </div>
+
+    <div class="relative z-10 px-5 md:px-10 pb-16 md:pb-24 pt-28 max-w-4xl">
+        <p class="font-label-caps text-label-caps text-primary tracking-[0.2em] mb-4 welcome-rise">FIFA WORLD CUP 2026</p>
+        <h1 class="font-display-lg text-[56px] md:text-[88px] leading-[0.9] tracking-wide text-on-surface welcome-rise-delay">
+            WORLD CUP<br/><span class="text-primary">FANTASY</span>
+        </h1>
+        <div class="h-px w-24 bg-primary mt-6 mb-6 welcome-line"></div>
+        {% if mode == 'guest' %}
+        <p class="font-body-lg text-body-lg text-on-surface-variant max-w-xl welcome-rise-delay-2">
+            Pick 15 players. Chase every goal. Climb the global board through the tournament.
+        </p>
+        <div class="flex flex-wrap gap-3 mt-8 welcome-rise-delay-2">
+            <a href="/register" class="bg-primary text-on-primary font-label-caps text-label-caps px-6 py-3 rounded-lg hover:brightness-110 transition-all">
+                Start as manager
+            </a>
+            <a href="/login" class="border border-outline-variant text-on-surface font-label-caps text-label-caps px-6 py-3 rounded-lg hover:border-primary hover:text-primary transition-all">
+                I have an account
+            </a>
+        </div>
+        {% else %}
+        <p class="font-body-lg text-body-lg text-on-surface-variant max-w-xl welcome-rise-delay-2">
+            Welcome, {{ current_user.username }}. Your first move is building a 15-player squad on a $100m budget.
+        </p>
+        <div class="flex flex-wrap gap-3 mt-8 welcome-rise-delay-2">
+            <a href="/squad" class="bg-primary text-on-primary font-label-caps text-label-caps px-6 py-3 rounded-lg hover:brightness-110 transition-all">
+                Build my squad
+            </a>
+            <a href="/fixtures" class="border border-outline-variant text-on-surface font-label-caps text-label-caps px-6 py-3 rounded-lg hover:border-primary hover:text-primary transition-all">
+                See fixtures
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<section class="bg-background px-5 md:px-10 py-20 md:py-28 border-t border-outline-variant/40">
+    <div class="max-w-5xl mx-auto">
+        <h2 class="font-headline-lg text-headline-lg text-on-surface mb-3">How you play</h2>
+        <p class="font-body-md text-body-md text-on-surface-variant max-w-2xl mb-12">
+            Three steps from empty pitch to matchday points.
+        </p>
+        <ol class="grid md:grid-cols-3 gap-10 md:gap-12">
+            <li>
+                <span class="font-stat-lg text-stat-lg text-primary block mb-3">01</span>
+                <h3 class="font-headline-md text-headline-md text-on-surface mb-2">Draft your XV</h3>
+                <p class="font-body-sm text-body-sm text-on-surface-variant">
+                    Choose 2 GK, 5 DEF, 5 MID, 3 FWD within $100m. Max three from any one nation.
+                </p>
+            </li>
+            <li>
+                <span class="font-stat-lg text-stat-lg text-primary block mb-3">02</span>
+                <h3 class="font-headline-md text-headline-md text-on-surface mb-2">Set the XI</h3>
+                <p class="font-body-sm text-body-sm text-on-surface-variant">
+                    Lock in your starting eleven, captain, and vice before each matchday deadline.
+                </p>
+            </li>
+            <li>
+                <span class="font-stat-lg text-stat-lg text-primary block mb-3">03</span>
+                <h3 class="font-headline-md text-headline-md text-on-surface mb-2">Score &amp; climb</h3>
+                <p class="font-body-sm text-body-sm text-on-surface-variant">
+                    Earn points from real World Cup performances and rise in global and private leagues.
+                </p>
+            </li>
+        </ol>
+    </div>
+</section>
+
+<section class="relative px-5 md:px-10 py-20 md:py-24 overflow-hidden border-t border-outline-variant/40">
+    <div class="absolute inset-0 opacity-30">
+        <div class="absolute inset-0 bg-cover bg-center"
+             style="background-image: url('https://images.unsplash.com/photo-1556056504-5c7696c4c28d?auto=format&fit=crop&w=1600&q=80')"></div>
+        <div class="absolute inset-0 bg-gradient-to-t from-background via-background/85 to-background"></div>
+    </div>
+    <div class="relative z-10 max-w-3xl mx-auto text-center">
+        {% if mode == 'guest' %}
+        <h2 class="font-headline-lg text-headline-lg text-on-surface mb-4">Ready for kickoff?</h2>
+        <p class="font-body-md text-body-md text-on-surface-variant mb-8">
+            Create your manager account and draft before the next deadline.
+        </p>
+        <a href="/register" class="inline-block bg-primary text-on-primary font-label-caps text-label-caps px-8 py-3 rounded-lg hover:brightness-110 transition-all">
+            Create free account
+        </a>
+        {% else %}
+        <h2 class="font-headline-lg text-headline-lg text-on-surface mb-4">Your pitch is empty</h2>
+        <p class="font-body-md text-body-md text-on-surface-variant mb-8">
+            Tap empty slots on the pitch to filter by position, then save your 15.
+        </p>
+        <a href="/squad" class="inline-block bg-primary text-on-primary font-label-caps text-label-caps px-8 py-3 rounded-lg hover:brightness-110 transition-all">
+            Open squad builder
+        </a>
+        {% endif %}
+    </div>
+</section>
+
+<footer class="px-5 md:px-10 py-8 border-t border-outline-variant/30 flex flex-wrap gap-4 justify-between text-on-surface-variant font-body-sm">
+    <span>World Cup Fantasy 2026</span>
+    <div class="flex gap-4">
+        <a href="/fixtures" class="hover:text-primary transition-colors">Fixtures</a>
+        <a href="/leaderboard" class="hover:text-primary transition-colors">Leaderboard</a>
+        {% if mode == 'guest' %}
+        <a href="/login" class="hover:text-primary transition-colors">Sign in</a>
+        {% else %}
+        <a href="/dashboard" class="hover:text-primary transition-colors">Dashboard</a>
+        {% endif %}
+    </div>
+</footer>
+{% endblock %}

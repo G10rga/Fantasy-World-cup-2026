@@ -161,8 +161,29 @@ def _wants_json():
 
 
 def register_page_routes(app):
+    def _user_has_squad(user) -> bool:
+        from app.models import FantasyTeam, FantasyTeamPlayer
+
+        team = (
+            FantasyTeam.query.filter_by(user_id=user.id)
+            .order_by(FantasyTeam.matchday.desc())
+            .first()
+        )
+        if not team:
+            return False
+        return FantasyTeamPlayer.query.filter_by(fantasy_team_id=team.id).count() > 0
+
     @app.route("/")
     def index():
+        from flask_login import current_user
+
+        if current_user.is_authenticated and _user_has_squad(current_user):
+            return render_template("fantasy/dashboard.html")
+        mode = "onboard" if current_user.is_authenticated else "guest"
+        return render_template("welcome.html", mode=mode)
+
+    @app.route("/dashboard")
+    def dashboard_page():
         return render_template("fantasy/dashboard.html")
 
     @app.route("/squad")
