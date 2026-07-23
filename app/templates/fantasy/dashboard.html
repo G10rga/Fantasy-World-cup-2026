@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — World Cup Fantasy 2026{% endblock %}
+{% block content %}
+<!-- Hero Banner -->
+<div class="relative w-full rounded-xl overflow-hidden bg-surface-container border border-outline-variant min-h-[200px] flex items-center justify-between p-6 md:p-8 lg:p-12 group mb-6 lg:mb-8">
+    <div class="absolute inset-0 z-0 opacity-40">
+        <div class="bg-cover bg-center w-full h-full"
+             style="background-image: url('https://images.unsplash.com/photo-1556056504-5c7696c4c28d?auto=format&fit=crop&w=1600&q=80')"></div>
+        <div class="absolute inset-0 bg-gradient-to-r from-background via-background/80 to-transparent"></div>
+    </div>
+    <div class="relative z-10 flex flex-col gap-2 max-w-2xl">
+        <div class="flex items-center gap-3 mb-2">
+            <span id="hero-md-badge" class="bg-primary text-on-primary font-label-caps text-label-caps px-2 py-1 rounded-sm uppercase">Matchday —</span>
+            <span id="hero-stage" class="text-text-secondary font-body-sm text-body-sm">—</span>
+        </div>
+        <h2 id="hero-deadline" class="font-display-lg text-headline-lg-mobile md:text-display-lg font-bold text-white uppercase tracking-tight leading-none drop-shadow-md">
+            — <span class="text-primary text-opacity-80">UNTIL DEADLINE</span>
+        </h2>
+        <p id="hero-blurb" class="font-body-md text-body-md text-on-surface-variant mt-2 max-w-md">Finalize your squad before the next kickoff.</p>
+    </div>
+    <div class="relative z-10 hidden md:block">
+        <a id="hero-edit-btn" href="/squad" class="inline-block bg-surface-elevated text-primary font-body-md text-body-md font-bold py-3 px-6 rounded-lg border border-primary/50 hover:bg-primary hover:text-on-primary transition-all glow-primary">
+            EDIT TEAM
+        </a>
+    </div>
+</div>
+
+<!-- Live Matches Strip -->
+<div class="w-full mb-6 lg:mb-8">
+    <div class="flex items-center justify-between mb-4">
+        <h3 class="font-headline-md text-headline-md text-on-surface uppercase">Live &amp; Upcoming</h3>
+        <a class="text-primary font-label-caps text-label-caps hover:underline" href="/fixtures">View All</a>
+    </div>
+    <div id="match-ticker" class="flex gap-4 overflow-x-auto no-scrollbar pb-2">
+        <div class="min-w-[240px] bg-surface rounded-xl p-4 border border-outline-variant text-on-surface-variant font-body-sm">Loading matches…</div>
+    </div>
+</div>
+
+<!-- Bento Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+    <div class="md:col-span-3 lg:col-span-4 grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-surface p-4 rounded-xl border border-outline-variant flex flex-col justify-center items-center gap-1">
+            <span class="text-on-surface-variant font-label-caps text-label-caps uppercase">My Points</span>
+            <span id="kpi-points" class="font-display-lg text-headline-lg-mobile md:text-headline-lg text-primary">—</span>
+        </div>
+        <div class="bg-surface p-4 rounded-xl border border-outline-variant flex flex-col justify-center items-center gap-1">
+            <span class="text-on-surface-variant font-label-caps text-label-caps uppercase">Global Rank</span>
+            <span id="kpi-rank" class="font-display-lg text-headline-lg-mobile md:text-headline-lg text-on-surface">—</span>
+        </div>
+        <div class="bg-surface p-4 rounded-xl border border-outline-variant flex flex-col justify-center items-center gap-1">
+            <span class="text-on-surface-variant font-label-caps text-label-caps uppercase">MD Points</span>
+            <span id="kpi-md" class="font-display-lg text-headline-lg-mobile md:text-headline-lg text-on-surface">—</span>
+        </div>
+        <div class="bg-surface p-4 rounded-xl border border-outline-variant flex flex-col justify-center items-center gap-1">
+            <span class="text-on-surface-variant font-label-caps text-label-caps uppercase">Remaining Budget</span>
+            <span id="kpi-budget" class="font-stat-lg text-stat-lg text-primary bg-surface-container px-3 py-1 rounded-md mt-2">$—</span>
+        </div>
+    </div>
+
+    <div class="md:col-span-2 bg-surface border border-outline-variant rounded-xl overflow-hidden flex flex-col h-[400px]">
+        <div class="p-4 border-b border-outline-variant bg-surface-container-low flex justify-between items-center">
+            <h3 class="font-headline-md text-headline-md uppercase">My Squad</h3>
+            <a href="/my-team" class="font-stat-md text-stat-md text-primary hover:underline">View</a>
+        </div>
+        <div id="dash-pitch" class="flex-1 pitch-pattern relative p-4 flex flex-col justify-between">
+            <div class="absolute inset-0 pointer-events-none opacity-20 border-2 border-white/30 m-4 rounded-lg"></div>
+            <div class="flex-1 flex items-center justify-center text-on-surface-variant font-body-sm" id="dash-pitch-empty">Sign in and build your squad</div>
+        </div>
+    </div>
+
+    <div class="md:col-span-1 lg:col-span-2 flex flex-col gap-6">
+        <div class="bg-surface border border-primary/30 rounded-xl p-5 relative overflow-hidden group">
+            <div class="absolute -right-8 -top-8 text-primary opacity-5 group-hover:opacity-10 transition-opacity">
+                <span class="material-symbols-outlined text-9xl">swap_horiz</span>
+            </div>
+            <h4 class="font-headline-md text-headline-md text-primary mb-2 flex items-center gap-2">
+                <span class="material-symbols-outlined text-xl">warning</span>
+                Deadline Approaching
+            </h4>
+            <p class="font-body-sm text-body-sm text-on-surface mb-4" id="transfer-reminder">
+                Check your free transfers before the next deadline.
+            </p>
+            <a href="/transfers" class="block w-full text-center bg-transparent border border-primary text-primary font-body-sm text-body-sm font-bold py-2 rounded-lg hover:bg-primary/10 transition-colors">
+                MAKE TRANSFERS
+            </a>
+        </div>
+
+        <div class="bg-surface border border-outline-variant rounded-xl flex-1 flex flex-col">
+            <div class="p-4 border-b border-outline-variant flex justify-between items-center">
+                <h4 class="font-headline-md text-headline-md uppercase" id="league-widget-title">Mini League</h4>
+                <a href="/leagues" class="material-symbols-outlined text-text-secondary text-sm">open_in_new</a>
+            </div>
+            <div id="league-standings" class="flex-1 p-0">
+                <div class="p-6 text-center text-on-surface-variant font-body-sm">Loading leagues…</div>
+            </div>
+            <div class="p-3 border-t border-outline-variant text-center">
+                <a class="font-label-caps text-label-caps text-primary hover:underline" href="/leagues">VIEW FULL TABLE</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

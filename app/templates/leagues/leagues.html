@@ -1,21 +1,37 @@
 {% extends "base.html" %}
-{% block title %}Mini Leagues - WC2026 Fantasy{% endblock %}
+{% block title %}Mini Leagues — World Cup Fantasy 2026{% endblock %}
 {% block content %}
-<div class="page-header">
-    <h1>Mini Leagues</h1>
-    <button class="btn btn-primary" id="create-league-btn">Create League</button>
-    <button class="btn btn-secondary" id="join-league-btn">Join League</button>
-</div>
+<div class="flex flex-col gap-6 max-w-5xl mx-auto">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <h1 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-text-primary">MINI LEAGUES</h1>
+        <div class="flex gap-2">
+            <button class="bg-primary-container text-on-primary-container font-label-caps text-label-caps px-4 py-2.5 rounded-lg font-bold hover:brightness-110" id="create-league-btn" type="button">Create League</button>
+            <button class="border border-primary text-primary font-label-caps text-label-caps px-4 py-2.5 rounded-lg hover:bg-primary/10" id="join-league-btn" type="button">Join League</button>
+        </div>
+    </div>
 
-<div id="leagues-list"></div>
+    <div id="leagues-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+
+    <div id="standings-panel" class="bg-surface border border-outline-variant rounded-xl overflow-hidden" style="display:none">
+        <div class="p-4 border-b border-outline-variant">
+            <h2 id="standings-title" class="font-headline-md text-headline-md uppercase"></h2>
+        </div>
+        <table class="data-table" id="standings-table">
+            <thead><tr><th>Rank</th><th>User</th><th style="text-align:right">Points</th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
 
 <div id="create-modal" class="modal" style="display:none">
     <div class="modal-content">
         <h3>Create League</h3>
         <input type="text" id="league-name" placeholder="League name">
-        <label><input type="checkbox" id="league-public"> Public league</label>
-        <button class="btn btn-primary" id="confirm-create">Create</button>
-        <button class="btn" id="cancel-create">Cancel</button>
+        <label class="flex items-center gap-2 font-body-sm text-on-surface-variant">
+            <input type="checkbox" id="league-public" class="rounded border-outline-variant"> Public league
+        </label>
+        <button class="w-full bg-primary-container text-on-primary-container font-bold py-3 rounded-lg" id="confirm-create" type="button">Create</button>
+        <button class="w-full border border-outline-variant text-on-surface py-2 rounded-lg" id="cancel-create" type="button">Cancel</button>
     </div>
 </div>
 
@@ -23,17 +39,9 @@
     <div class="modal-content">
         <h3>Join League</h3>
         <input type="text" id="league-code" placeholder="6-char invite code" maxlength="6">
-        <button class="btn btn-primary" id="confirm-join">Join</button>
-        <button class="btn" id="cancel-join">Cancel</button>
+        <button class="w-full bg-primary-container text-on-primary-container font-bold py-3 rounded-lg" id="confirm-join" type="button">Join</button>
+        <button class="w-full border border-outline-variant text-on-surface py-2 rounded-lg" id="cancel-join" type="button">Cancel</button>
     </div>
-</div>
-
-<div id="standings-panel" style="display:none">
-    <h2 id="standings-title"></h2>
-    <table class="data-table" id="standings-table">
-        <thead><tr><th>Rank</th><th>User</th><th>Points</th></tr></thead>
-        <tbody></tbody>
-    </table>
 </div>
 
 <script>
@@ -42,15 +50,19 @@ async function loadLeagues() {
     const data = await res.json();
     const container = document.getElementById('leagues-list');
     if (!data.success) {
-        container.innerHTML = '<p>Please <a href="/login">login</a> to view leagues.</p>';
+        container.innerHTML = '<p class="text-on-surface-variant col-span-full text-center py-12">Please <a class="text-primary underline" href="/login">login</a> to view leagues.</p>';
+        return;
+    }
+    if (!data.leagues.length) {
+        container.innerHTML = '<p class="text-on-surface-variant col-span-full text-center py-12">No leagues yet. Create or join one to get started.</p>';
         return;
     }
     container.innerHTML = data.leagues.map(l => `
-        <div class="league-card" data-id="${l.id}">
-            <h3>${l.name}</h3>
-            <p>Code: <strong>${l.code}</strong> | Members: ${l.member_count}</p>
-            <p>Your rank: ${l.my_rank || '—'} (${l.my_points || 0} pts)</p>
-            <button class="btn btn-sm view-standings" data-id="${l.id}">View Standings</button>
+        <div class="bg-surface border border-outline-variant rounded-xl p-5 hover:border-primary/40 transition-colors">
+            <h3 class="font-headline-md text-headline-md text-on-surface mb-2">${l.name}</h3>
+            <p class="font-body-sm text-body-sm text-on-surface-variant mb-1">Code: <strong class="text-primary font-stat-md">${l.code}</strong> · Members: ${l.member_count}</p>
+            <p class="font-body-sm text-body-sm text-on-surface-variant mb-4">Your rank: <strong class="text-on-surface">${l.my_rank || '—'}</strong> (${l.my_points || 0} pts)</p>
+            <button type="button" class="view-standings border border-primary text-primary font-label-caps text-label-caps px-4 py-2 rounded-lg hover:bg-primary/10" data-id="${l.id}">View Standings</button>
         </div>
     `).join('');
 
@@ -65,8 +77,13 @@ async function loadStandings(leagueId) {
     document.getElementById('standings-panel').style.display = 'block';
     document.getElementById('standings-title').textContent = data.league.name + ' Standings';
     document.querySelector('#standings-table tbody').innerHTML = data.standings.map(s => `
-        <tr><td>${s.rank || '—'}</td><td>${s.username}</td><td>${s.points}</td></tr>
+        <tr>
+            <td style="font-family:JetBrains Mono,monospace;color:${s.rank === 1 ? '#e5c363' : 'inherit'}">${s.rank || '—'}</td>
+            <td style="font-weight:600">${s.username}</td>
+            <td style="text-align:right;font-family:JetBrains Mono,monospace;font-weight:700;color:#e5c363">${s.points}</td>
+        </tr>
     `).join('');
+    document.getElementById('standings-panel').scrollIntoView({ behavior: 'smooth' });
 }
 
 document.getElementById('create-league-btn').onclick = () => {
@@ -88,6 +105,8 @@ document.getElementById('confirm-create').onclick = async () => {
     if (data.success) {
         document.getElementById('create-modal').style.display = 'none';
         loadLeagues();
+    } else {
+        alert(data.message || 'Failed to create league');
     }
 };
 

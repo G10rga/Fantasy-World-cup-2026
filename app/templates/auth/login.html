@@ -1,32 +1,80 @@
-{% extends "base.html" %}
-{% block title %}Login — WC2026 Fantasy{% endblock %}
-{% block content %}
-<div class="auth-form">
-    <div style="margin-bottom:24px">
-        <div style="font-family:var(--font-display);font-size:13px;letter-spacing:2px;color:var(--gold);margin-bottom:6px">WC2026 FANTASY</div>
-        <h1>Welcome back</h1>
-        <p style="color:var(--chalk-muted);font-size:14px;margin-top:6px">Sign in to manage your squad</p>
+{% extends "auth_base.html" %}
+{% block title %}Login — World Cup Fantasy 2026{% endblock %}
+{% block body %}
+<div class="absolute inset-0 z-0">
+    <div class="bg-cover bg-center w-full h-full opacity-60 mix-blend-overlay"
+         style="background-image: url('https://images.unsplash.com/photo-1522778119026-d647f0596c20?auto=format&fit=crop&w=1920&q=80')"></div>
+    <div class="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent"></div>
+</div>
+
+<div class="relative z-10 w-full max-w-md px-gutter md:px-0 mx-auto min-h-screen flex flex-col justify-center py-12">
+    <div class="flex flex-col items-center mb-8">
+        <span class="material-symbols-outlined text-primary text-[48px] mb-2 filled">trophy</span>
+        <h1 class="font-headline-lg text-headline-lg text-text-primary tracking-wider">WORLD CUP FANTASY</h1>
     </div>
-    <form id="login-form" autocomplete="on">
-        <div class="form-group">
-            <label for="email">Email</label>
-            <input type="email" id="email" name="email" placeholder="you@example.com" required autocomplete="email">
+
+    <div class="bg-surface rounded-[12px] p-lg md:p-[32px] border border-outline-variant/30 gold-glow relative overflow-hidden shadow-2xl">
+        <div class="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none"></div>
+        <h2 class="font-headline-md text-headline-md text-text-primary text-center mb-6">WELCOME BACK, SCOUT</h2>
+        <form id="login-form" class="space-y-6" autocomplete="on">
+            <div>
+                <label class="block font-label-caps text-label-caps text-on-surface-variant mb-2" for="email">EMAIL ADDRESS</label>
+                <div class="relative rounded-lg bg-surface-elevated border border-outline-variant transition-all duration-300 input-focus-glow">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <span class="material-symbols-outlined text-on-surface-variant text-sm">mail</span>
+                    </div>
+                    <input class="block w-full pl-10 pr-3 py-3 bg-transparent border-none text-text-primary focus:ring-0 placeholder-on-surface-variant/50 font-body-md"
+                           id="email" name="email" placeholder="scout@fantasy.com" type="email" required autocomplete="email"/>
+                </div>
+            </div>
+            <div>
+                <div class="flex justify-between items-center mb-2">
+                    <label class="block font-label-caps text-label-caps text-on-surface-variant" for="password">PASSWORD</label>
+                </div>
+                <div class="relative rounded-lg bg-surface-elevated border border-outline-variant transition-all duration-300 input-focus-glow">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <span class="material-symbols-outlined text-on-surface-variant text-sm">lock</span>
+                    </div>
+                    <input class="block w-full pl-10 pr-10 py-3 bg-transparent border-none text-text-primary focus:ring-0 placeholder-on-surface-variant/50 font-body-md"
+                           id="password" name="password" placeholder="••••••••" type="password" required autocomplete="current-password"/>
+                    <button class="absolute inset-y-0 right-0 pr-3 flex items-center text-on-surface-variant hover:text-text-primary transition-colors" type="button" id="toggle-pw">
+                        <span class="material-symbols-outlined text-sm" id="toggle-pw-icon">visibility_off</span>
+                    </button>
+                </div>
+            </div>
+            <div id="error-msg" class="error-msg"></div>
+            <button class="w-full bg-primary text-[#000000] font-headline-md text-headline-md rounded-[8px] py-3 tracking-wide hover:bg-primary-fixed transition-colors duration-300 relative overflow-hidden group" type="submit">
+                <span class="relative z-10 flex items-center justify-center gap-2">
+                    ENTER THE ARENA
+                    <span class="material-symbols-outlined text-sm filled">arrow_forward</span>
+                </span>
+            </button>
+        </form>
+        <div class="mt-6 text-center">
+            <p class="font-body-sm text-body-sm text-text-secondary">
+                Don't have a team? <a class="text-primary hover:text-primary-fixed transition-colors font-medium" href="/register">Register</a>
+            </p>
         </div>
-        <div class="form-group">
-            <label for="password">Password</label>
-            <input type="password" id="password" name="password" placeholder="••••••••" required autocomplete="current-password">
-        </div>
-        <div id="error-msg" class="error-msg"></div>
-        <button type="submit" class="btn btn-primary">Sign in</button>
-    </form>
-    <p>No account yet? <a href="/register">Create one</a></p>
+    </div>
+
+    <div id="kickoff-pill" class="mt-8 flex justify-center items-center gap-2 text-primary font-stat-md text-stat-md bg-surface-container/50 px-4 py-2 rounded-full backdrop-blur-sm border border-primary/20 hidden">
+        <span class="w-2 h-2 rounded-full bg-danger animate-pulse"></span>
+        <span id="kickoff-text">TOURNAMENT KICKOFF: —</span>
+    </div>
 </div>
 
 <script>
+document.getElementById('toggle-pw')?.addEventListener('click', () => {
+    const input = document.getElementById('password');
+    const icon = document.getElementById('toggle-pw-icon');
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    icon.textContent = show ? 'visibility' : 'visibility_off';
+});
+
 document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = e.target.querySelector('button[type=submit]');
-    btn.textContent = 'Signing in…';
     btn.disabled = true;
     try {
         const res = await fetch('/api/auth/login', {
@@ -42,14 +90,38 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
             window.location.href = '/';
         } else {
             document.getElementById('error-msg').textContent = data.message;
-            btn.textContent = 'Sign in';
             btn.disabled = false;
         }
     } catch {
         document.getElementById('error-msg').textContent = 'Network error. Try again.';
-        btn.textContent = 'Sign in';
         btn.disabled = false;
     }
 });
+
+(async function kickoffCountdown() {
+    try {
+        const res = await fetch('/api/fixtures');
+        const data = await res.json();
+        if (!data.success) return;
+        const next = (data.fixtures || [])
+            .filter(f => f.kickoff_utc)
+            .sort((a, b) => new Date(a.kickoff_utc) - new Date(b.kickoff_utc))[0];
+        if (!next) return;
+        const pill = document.getElementById('kickoff-pill');
+        const text = document.getElementById('kickoff-text');
+        pill.classList.remove('hidden');
+        const target = new Date(next.kickoff_utc).getTime();
+        function tick() {
+            const diff = target - Date.now();
+            if (diff <= 0) { text.textContent = 'TOURNAMENT UNDERWAY'; return; }
+            const d = Math.floor(diff / 86400000);
+            const h = Math.floor((diff % 86400000) / 3600000);
+            const m = Math.floor((diff % 3600000) / 60000);
+            text.textContent = `TOURNAMENT KICKOFF: ${d}D ${h}H ${String(m).padStart(2,'0')}M`;
+        }
+        tick();
+        setInterval(tick, 60000);
+    } catch (_) {}
+})();
 </script>
 {% endblock %}

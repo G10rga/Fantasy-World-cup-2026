@@ -78,6 +78,10 @@ def _wants_json():
 def register_page_routes(app):
     @app.route("/")
     def index():
+        return render_template("fantasy/dashboard.html")
+
+    @app.route("/squad")
+    def squad_page():
         return render_template("fantasy/squad_builder.html")
 
     @app.route("/my-team")

@@ -64,3 +64,6 @@ htmlcov/
 probe*.txt
 *.tmp
 *.bak
+
+# Design reference extracts (not part of the app)
+_design_stitch/

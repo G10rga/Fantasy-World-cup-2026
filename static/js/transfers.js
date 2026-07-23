@@ -1,17 +1,21 @@
 async function loadBudgetInfo() {
+    const el = document.getElementById('transfer-budget-info');
     const res = await fetch('/api/transfers/budget');
     const data = await res.json();
     if (!data.success) {
-        document.getElementById('transfer-budget-info').innerHTML =
-            '<p>Please <a href="/login">login</a> to manage transfers.</p>';
+        el.innerHTML = 'Please <a class="text-primary underline" href="/login">login</a> to manage transfers.';
         return;
     }
-    document.getElementById('transfer-budget-info').innerHTML = `
-        <p>Budget: $${data.budget_remaining.toFixed(1)}m remaining (limit: $${data.budget_limit}m)</p>
-        <p>Free transfers: ${data.free_transfers_remaining} of ${data.free_transfers}
-           | Used: ${data.transfers_used} | Penalty: -${data.transfer_penalty}pts per extra</p>
-        ${data.is_live_matchday ? '<p class="warning">Live matchday — transfers apply to next matchday</p>' : ''}
+    el.innerHTML = `
+        <div class="flex flex-wrap gap-x-6 gap-y-1">
+            <span>Remaining: <strong class="text-primary font-stat-md">$${data.budget_remaining.toFixed(1)}m</strong> / $${data.budget_limit}m</span>
+            <span>Free transfers: <strong class="text-on-surface">${data.free_transfers_remaining}</strong> of ${data.free_transfers}</span>
+            <span>Penalty: <strong class="text-danger">-${data.transfer_penalty}pts</strong></span>
+            ${data.is_live_matchday ? '<span class="text-danger font-bold">Live MD — applies next</span>' : ''}
+        </div>
     `;
+    const hdr = document.getElementById('hdr-remaining');
+    if (hdr) hdr.textContent = data.budget_remaining.toFixed(1);
 }
 
 async function loadSquadPlayers() {
@@ -20,7 +24,7 @@ async function loadSquadPlayers() {
     if (!data.success) return;
 
     const outSelect = document.getElementById('player-out');
-    outSelect.innerHTML = '<option value="">-- Select --</option>';
+    outSelect.innerHTML = '<option value="">— Select player to remove —</option>';
     data.team.players.forEach(ftp => {
         const opt = document.createElement('option');
         opt.value = ftp.player_id;
@@ -35,7 +39,7 @@ async function loadAllPlayers() {
     if (!data.success) return;
 
     const inSelect = document.getElementById('player-in');
-    inSelect.innerHTML = '<option value="">-- Select --</option>';
+    inSelect.innerHTML = '<option value="">— Select replacement —</option>';
     data.players.forEach(p => {
         const opt = document.createElement('option');
         opt.value = p.id;
@@ -49,15 +53,18 @@ async function loadTransferHistory() {
     const data = await res.json();
     if (!data.success) return;
 
-    document.querySelector('#transfer-table tbody').innerHTML = data.transfers.map(t => `
-        <tr>
-            <td>${t.player_out?.name || '—'}</td>
-            <td>${t.player_in?.name || '—'}</td>
-            <td>MD${t.matchday}</td>
-            <td>${t.cost_in_points > 0 ? '-' + t.cost_in_points : 'Free'}</td>
-            <td>${new Date(t.timestamp).toLocaleDateString()}</td>
-        </tr>
-    `).join('');
+    const rows = data.transfers || [];
+    document.querySelector('#transfer-table tbody').innerHTML = rows.length
+        ? rows.map(t => `
+            <tr>
+                <td>${t.player_out?.name || '—'}</td>
+                <td>${t.player_in?.name || '—'}</td>
+                <td style="text-align:center">MD${t.matchday}</td>
+                <td style="text-align:center">${t.cost_in_points > 0 ? '-' + t.cost_in_points : 'Free'}</td>
+                <td>${new Date(t.timestamp).toLocaleDateString()}</td>
+            </tr>
+        `).join('')
+        : '<tr><td colspan="5" style="text-align:center;color:#9CA3AF;padding:40px">No transfers yet</td></tr>';
 }
 
 async function loadBoosters() {
@@ -66,13 +73,19 @@ async function loadBoosters() {
     if (!data.success) return;
 
     document.getElementById('boosters-list').innerHTML = data.boosters.map(b => `
-        <div class="booster-card ${b.used ? 'used' : 'available'}">
-            <h4>${b.type}</h4>
-            <p>${b.description}</p>
-            <p>Status: ${b.used ? `Used (MD${b.matchday_used})` : 'Available'}</p>
-            ${!b.used ? `<button class="btn btn-sm activate-booster" data-type="${b.type}">Activate</button>` : ''}
+        <div class="rounded-xl border ${b.used ? 'border-outline-variant opacity-70' : 'border-primary/40'} bg-surface-container-low p-4">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <h4 class="font-headline-md text-lg text-on-surface">${b.type.replace(/_/g, ' ')}</h4>
+                    <p class="font-body-sm text-body-sm text-on-surface-variant mt-1">${b.description || ''}</p>
+                    <p class="font-label-caps text-label-caps mt-2 ${b.used ? 'text-on-surface-variant' : 'text-tertiary'}">
+                        ${b.used ? `Used (MD${b.matchday_used})` : 'Available'}
+                    </p>
+                </div>
+                ${!b.used ? `<button type="button" class="activate-booster flex-shrink-0 bg-primary-container text-on-primary-container font-label-caps text-label-caps px-3 py-2 rounded-lg hover:brightness-110" data-type="${b.type}">Activate</button>` : '<span class="material-symbols-outlined text-outline-variant">lock</span>'}
+            </div>
         </div>
-    `).join('');
+    `).join('') || '<p class="text-on-surface-variant font-body-sm">No boosters</p>';
 
     document.querySelectorAll('.activate-booster').forEach(btn => {
         btn.addEventListener('click', async () => {
@@ -103,7 +116,7 @@ document.getElementById('confirm-transfer').addEventListener('click', async () =
     const inId = document.getElementById('player-in').value;
     const msg = document.getElementById('transfer-msg');
 
-    if (!inId) { msg.textContent = 'Select a player to transfer in'; return; }
+    if (!inId) { msg.textContent = 'Select a player to transfer in'; msg.className = 'error-msg'; return; }
 
     const res = await fetch('/api/transfers', {
         method: 'POST',

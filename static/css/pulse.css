@@ -1,0 +1,141 @@
+/* Championship Pulse — residual helpers beyond Tailwind */
+
+.nav-link-active {
+  color: #e5c363;
+  font-weight: 700;
+  border-left: 4px solid #e5c363;
+  background: #1b1f2c;
+  transform: scale(0.95);
+}
+
+.nav-link-idle {
+  color: #d0c5b2;
+}
+
+.nav-link-idle:hover {
+  color: #dfe2f3;
+  background: #1b1f2c;
+}
+
+.mobile-nav-active {
+  color: #e5c363;
+  background: rgba(200, 168, 75, 0.2);
+}
+
+.delayed-banner {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #ffb4ab;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.data-table th {
+  text-align: left;
+  font-family: Inter, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #9CA3AF;
+  padding: 12px 14px;
+  border-bottom: 1px solid #4d4637;
+}
+
+.data-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(77, 70, 55, 0.4);
+  color: #dfe2f3;
+}
+
+.data-table tbody tr:nth-child(odd) {
+  background: #0a0e1a;
+}
+
+.data-table tbody tr:nth-child(even) {
+  background: #111827;
+}
+
+.data-table tbody tr:hover {
+  background: #1C2333;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 14, 26, 0.8);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.modal-content {
+  background: #1C2333;
+  border: 1px solid rgba(200, 168, 75, 0.2);
+  border-radius: 12px;
+  padding: 24px;
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modal-content h3 {
+  font-family: "Bebas Neue", sans-serif;
+  font-size: 24px;
+  letter-spacing: 0.03em;
+  color: #F9FAFB;
+}
+
+.modal-content input[type="text"],
+.modal-content input[type="password"],
+.modal-content input[type="email"],
+.modal-content input[type="number"],
+.modal-content select {
+  background: #111827;
+  border: 1px solid #4d4637;
+  border-radius: 8px;
+  padding: 12px;
+  color: #F9FAFB;
+  width: 100%;
+}
+
+.modal-content input:focus,
+.modal-content select:focus {
+  outline: none;
+  border-color: #c8a84b;
+  box-shadow: 0 0 12px rgba(200, 168, 75, 0.4);
+}
+
+.error-msg {
+  color: #EF4444;
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+.success-msg {
+  color: #4edea3;
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+.tab.active {
+  background: #c8a84b;
+  color: #4f3d00;
+}
+
+.over-budget {
+  color: #EF4444 !important;
+}

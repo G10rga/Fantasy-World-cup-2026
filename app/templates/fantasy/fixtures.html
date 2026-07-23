@@ -1,27 +1,33 @@
 {% extends "base.html" %}
-{% block title %}Fixtures — WC2026 Fantasy{% endblock %}
+{% block title %}Fixtures — World Cup Fantasy 2026{% endblock %}
 {% block content %}
-<div class="page-header">
-    <h1>Fixtures</h1>
-    <div class="form-group inline" style="margin-bottom:0;margin-left:auto">
-        <label>Matchday</label>
-        <select id="filter-matchday" style="width:auto">
-            <option value="">All</option>
-        </select>
-        <label>Stage</label>
-        <select id="filter-stage" style="width:auto">
-            <option value="">All</option>
-            <option value="group">Group Stage</option>
-            <option value="RO32">Round of 32</option>
-            <option value="QF">Quarter-finals</option>
-            <option value="SF">Semi-finals</option>
-            <option value="F">Final</option>
-        </select>
+<div class="flex flex-col gap-6 max-w-4xl mx-auto">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <h1 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-text-primary">FIXTURES</h1>
+        <div class="flex flex-wrap gap-3 items-center">
+            <div>
+                <label class="font-label-caps text-label-caps text-on-surface-variant mr-2" for="filter-matchday">Matchday</label>
+                <select id="filter-matchday" class="bg-surface-elevated border border-outline-variant rounded-lg px-3 py-2 text-sm text-on-surface focus:border-primary focus:outline-none">
+                    <option value="">All</option>
+                </select>
+            </div>
+            <div>
+                <label class="font-label-caps text-label-caps text-on-surface-variant mr-2" for="filter-stage">Stage</label>
+                <select id="filter-stage" class="bg-surface-elevated border border-outline-variant rounded-lg px-3 py-2 text-sm text-on-surface focus:border-primary focus:outline-none">
+                    <option value="">All</option>
+                    <option value="group">Group Stage</option>
+                    <option value="RO32">Round of 32</option>
+                    <option value="QF">Quarter-finals</option>
+                    <option value="SF">Semi-finals</option>
+                    <option value="F">Final</option>
+                </select>
+            </div>
+        </div>
     </div>
-</div>
 
-<div id="fixtures-list">
-    <div style="text-align:center;padding:60px;color:var(--chalk-muted)">Loading fixtures…</div>
+    <div id="fixtures-list">
+        <div class="text-center py-16 text-on-surface-variant font-body-sm">Loading fixtures…</div>
+    </div>
 </div>
 
 <script>
@@ -35,7 +41,7 @@ async function loadFixtures() {
     const data = await res.json();
     const container = document.getElementById('fixtures-list');
     if (!data.success) {
-        container.innerHTML = '<div style="text-align:center;padding:60px;color:var(--chalk-muted)">Could not load fixtures.</div>';
+        container.innerHTML = '<div class="text-center py-16 text-on-surface-variant">Could not load fixtures.</div>';
         return;
     }
 
@@ -51,11 +57,10 @@ async function loadFixtures() {
     }
 
     if (!data.fixtures.length) {
-        container.innerHTML = '<div style="text-align:center;padding:60px;color:var(--chalk-muted)">No fixtures match your filters.</div>';
+        container.innerHTML = '<div class="text-center py-16 text-on-surface-variant">No fixtures match your filters.</div>';
         return;
     }
 
-    // Group by matchday
     const groups = {};
     data.fixtures.forEach(f => {
         if (!groups[f.matchday]) groups[f.matchday] = [];
@@ -63,22 +68,26 @@ async function loadFixtures() {
     });
 
     container.innerHTML = Object.entries(groups).map(([md, fixtures]) => `
-        <div style="margin-bottom:28px">
-            <div style="font-family:var(--font-display);font-size:13px;letter-spacing:2px;color:var(--chalk-muted);margin-bottom:12px;padding:0 4px">
-                MATCHDAY ${md}
-            </div>
-            ${fixtures.map(f => `
-                <div class="fixture-card ${f.status === 'LIVE' ? 'live' : ''}">
-                    <span class="fixture-stage">${f.stage}</span>
-                    <div class="fixture-teams">
-                        <span style="text-align:right;min-width:140px">${f.home_team?.name || 'TBD'}</span>
-                        <span class="fixture-score">${f.home_score ?? '–'}&nbsp;:&nbsp;${f.away_score ?? '–'}</span>
-                        <span style="text-align:left;min-width:140px">${f.away_team?.name || 'TBD'}</span>
+        <div class="mb-8">
+            <div class="font-headline-md text-sm tracking-wider text-on-surface-variant mb-3 px-1">MATCHDAY ${md}</div>
+            <div class="space-y-3">
+            ${fixtures.map(f => {
+                const live = f.status === 'LIVE' || f.status === 'IN_PLAY';
+                return `
+                <div class="bg-surface border ${live ? 'border-danger/40 glow-primary' : 'border-outline-variant'} rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+                    <span class="font-label-caps text-[10px] text-on-surface-variant uppercase">${f.stage || ''}</span>
+                    <div class="flex-1 flex items-center justify-center gap-4 font-body-md">
+                        <span class="text-right flex-1 font-semibold truncate">${f.home_team?.name || 'TBD'}</span>
+                        <span class="font-stat-lg text-stat-lg text-primary min-w-[72px] text-center">${f.home_score ?? '–'} : ${f.away_score ?? '–'}</span>
+                        <span class="text-left flex-1 font-semibold truncate">${f.away_team?.name || 'TBD'}</span>
                     </div>
-                    <span class="fixture-status">${f.status}</span>
-                    <span class="fixture-time">${f.kickoff_utc ? new Date(f.kickoff_utc).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '—'}</span>
-                </div>
-            `).join('')}
+                    <div class="flex items-center gap-3 justify-end">
+                        <span class="font-label-caps text-[10px] ${live ? 'text-danger animate-pulse' : 'text-on-surface-variant'}">${f.status || '—'}</span>
+                        <span class="font-stat-md text-xs text-on-surface-variant">${f.kickoff_utc ? new Date(f.kickoff_utc).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '—'}</span>
+                    </div>
+                </div>`;
+            }).join('')}
+            </div>
         </div>
     `).join('');
 }

@@ -1,69 +1,96 @@
 {% extends "base.html" %}
-{% block title %}Squad Builder — WC2026 Fantasy{% endblock %}
+{% block title %}Squad Builder — World Cup Fantasy 2026{% endblock %}
+{% block head %}
+<style>
+  .squad-main { margin: -16px -16px -24px; }
+  @media (min-width: 768px) { .squad-main { margin: -24px -24px -24px; } }
+  @media (min-width: 1024px) { .squad-main { margin: -40px -40px -40px; } }
+</style>
+{% endblock %}
 {% block content %}
-<div class="page-header">
-    <h1>Squad Builder</h1>
-    <div class="budget-bar">
-        Budget&nbsp; <span id="budget-remaining">$100.0m</span>
-        <span style="color:var(--card-border)">|</span>
-        <span id="squad-count" style="color:var(--chalk-muted)">0 / 15</span>
-    </div>
-</div>
-
-<div class="squad-builder-layout">
-    <aside class="filter-panel">
-        <h3>Filters</h3>
-        <div class="form-group">
-            <label>Position</label>
-            <select id="filter-position">
-                <option value="">All positions</option>
-                <option value="GK">Goalkeeper</option>
-                <option value="DEF">Defender</option>
-                <option value="MID">Midfielder</option>
-                <option value="FWD">Forward</option>
-            </select>
+<div class="squad-main flex flex-col md:flex-row min-h-[calc(100vh-4rem)] lg:min-h-[calc(100vh-4rem)] overflow-hidden">
+    <!-- Pitch panel -->
+    <section class="w-full md:w-[42%] bg-surface-container-low border-r border-outline-variant flex flex-col relative h-[420px] md:h-auto md:min-h-[640px] overflow-hidden">
+        <div class="absolute inset-0 pitch-pattern opacity-80 pointer-events-none"></div>
+        <div class="relative z-10 p-4 flex items-center justify-between border-b border-outline-variant/50 bg-surface-container-low/80">
+            <div>
+                <h2 class="font-headline-md text-headline-md uppercase text-on-surface">Your Squad</h2>
+                <p class="font-stat-md text-stat-md text-on-surface-variant mt-1">
+                    <span id="squad-count">0 / 15</span>
+                    <span class="mx-2">·</span>
+                    Rem <span id="budget-remaining" class="text-primary">$100.0m</span>
+                </p>
+            </div>
+            <button id="save-squad" class="bg-primary-container text-on-primary-container font-label-caps text-label-caps px-4 py-2 rounded-lg font-bold hover:brightness-110 transition-all">
+                SAVE
+            </button>
         </div>
-        <div class="form-group">
-            <label>Country</label>
-            <select id="filter-country"><option value="">All countries</option></select>
+        <div id="pitch-view" class="relative z-10 flex-1 p-md flex flex-col justify-between items-center py-6"></div>
+        <div class="relative z-10 p-4 border-t border-outline-variant/50 bg-surface/80 space-y-3">
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="font-label-caps text-label-caps text-on-surface-variant block mb-1">Captain</label>
+                    <select id="captain-select" class="w-full bg-surface-elevated border border-outline-variant rounded-lg px-3 py-2 text-sm text-on-surface focus:border-primary focus:outline-none">
+                        <option value="">— Select —</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="font-label-caps text-label-caps text-on-surface-variant block mb-1">Vice</label>
+                    <select id="vice-select" class="w-full bg-surface-elevated border border-outline-variant rounded-lg px-3 py-2 text-sm text-on-surface focus:border-primary focus:outline-none">
+                        <option value="">— Select —</option>
+                    </select>
+                </div>
+            </div>
+            <div id="save-msg" class="error-msg"></div>
         </div>
-        <div class="form-group">
-            <label>Max price ($m)</label>
-            <input type="number" id="filter-price" step="0.5" min="4" max="15" placeholder="e.g. 12">
-        </div>
-        <div class="form-group">
-            <label>Sort by</label>
-            <select id="filter-sort">
-                <option value="total_pts">Total points</option>
-                <option value="price">Price</option>
-                <option value="name">Name</option>
-                <option value="form_avg">Form</option>
-                <option value="selected_by_pct">Selected %</option>
-                <option value="this_matchday_pts">This matchday</option>
-            </select>
-        </div>
-        <button class="btn btn-primary" id="filter-apply" style="width:100%;justify-content:center">Apply</button>
-    </aside>
-
-    <section class="player-grid" id="player-grid">
-        <div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--chalk-muted)">Loading players…</div>
     </section>
 
-    <aside class="pitch-panel">
-        <h3>Your Squad</h3>
-        <div class="pitch" id="pitch-view" style="min-height:260px;margin-bottom:12px"></div>
-        <div class="bench" id="bench-view" style="padding:12px;margin-bottom:16px">
-            <div style="font-family:var(--font-display);font-size:12px;letter-spacing:2px;color:var(--chalk-muted);margin-bottom:8px">BENCH</div>
+    <!-- Player list panel -->
+    <section class="w-full md:w-[58%] bg-surface flex flex-col min-h-[480px] relative overflow-hidden">
+        <div class="p-md border-b border-outline-variant bg-surface-container z-10 shadow-sm space-y-3">
+            <div class="flex gap-2 overflow-x-auto pb-1 no-scrollbar" id="pos-filters">
+                <button type="button" data-pos="" class="pos-chip px-4 py-1.5 rounded-full bg-primary-container text-on-primary-container font-label-caps text-label-caps whitespace-nowrap">ALL</button>
+                <button type="button" data-pos="GK" class="pos-chip px-4 py-1.5 rounded-full bg-surface-variant text-on-surface hover:bg-surface-elevated font-label-caps text-label-caps whitespace-nowrap border border-outline-variant">GK</button>
+                <button type="button" data-pos="DEF" class="pos-chip px-4 py-1.5 rounded-full bg-surface-variant text-on-surface hover:bg-surface-elevated font-label-caps text-label-caps whitespace-nowrap border border-outline-variant">DEF</button>
+                <button type="button" data-pos="MID" class="pos-chip px-4 py-1.5 rounded-full bg-surface-variant text-on-surface hover:bg-surface-elevated font-label-caps text-label-caps whitespace-nowrap border border-outline-variant">MID</button>
+                <button type="button" data-pos="FWD" class="pos-chip px-4 py-1.5 rounded-full bg-surface-variant text-on-surface hover:bg-surface-elevated font-label-caps text-label-caps whitespace-nowrap border border-outline-variant">FWD</button>
+            </div>
+            <div class="flex gap-2 items-center flex-wrap">
+                <div class="relative flex-1 min-w-[140px]">
+                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline-variant text-sm">search</span>
+                    <input id="player-search" class="w-full bg-surface-elevated border border-outline-variant rounded-lg pl-9 pr-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all placeholder:text-outline-variant text-on-surface" placeholder="Search players..." type="text"/>
+                </div>
+                <select id="filter-country" class="bg-surface-elevated border border-outline-variant rounded-lg px-3 py-2 text-sm focus:border-primary focus:outline-none text-on-surface max-w-[140px]">
+                    <option value="">All nations</option>
+                </select>
+                <select id="filter-sort" class="bg-surface-elevated border border-outline-variant rounded-lg px-3 py-2 text-sm focus:border-primary focus:outline-none w-28 text-on-surface">
+                    <option value="total_pts">Pts</option>
+                    <option value="price">Price</option>
+                    <option value="form_avg">Form</option>
+                    <option value="name">Name</option>
+                    <option value="selected_by_pct">Selected %</option>
+                </select>
+                <input type="hidden" id="filter-position" value="">
+                <input type="hidden" id="filter-price" value="">
+                <button id="filter-apply" type="button" class="hidden">Apply</button>
+            </div>
         </div>
-        <div class="captain-select">
-            <label>Captain</label>
-            <select id="captain-select"><option value="">— Select —</option></select>
-            <label>Vice Captain</label>
-            <select id="vice-select"><option value="">— Select —</option></select>
+        <div id="player-grid" class="flex-1 overflow-y-auto p-2 pb-24 custom-scrollbar">
+            <div class="text-center py-16 text-on-surface-variant font-body-sm">Loading players…</div>
         </div>
-        <button class="btn btn-success" id="save-squad" style="width:100%;justify-content:center;margin-top:8px">Save Squad</button>
-        <div id="save-msg" class="error-msg"></div>
-    </aside>
+        <div class="absolute bottom-0 left-0 right-0 p-4 bg-surface-container border-t border-outline-variant">
+            <div class="flex justify-between items-center mb-2">
+                <span class="font-label-caps text-label-caps text-on-surface-variant">SQUAD BUDGET</span>
+                <span class="font-stat-md text-stat-md text-primary" id="budget-bar-label">$0.0m / $100.0m</span>
+            </div>
+            <div class="h-2 bg-surface-variant rounded-full overflow-hidden">
+                <div id="budget-bar" class="h-full bg-primary-container rounded-full transition-all" style="width:0%"></div>
+            </div>
+            <div class="mt-2 font-stat-md text-stat-md text-on-surface-variant">
+                Players selected: <span id="squad-count-footer" class="text-on-surface">0 / 15</span>
+            </div>
+        </div>
+    </section>
 </div>
 {% endblock %}
 {% block scripts %}

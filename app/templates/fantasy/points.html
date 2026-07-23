@@ -1,15 +1,17 @@
 {% extends "base.html" %}
-{% block title %}Points — WC2026 Fantasy{% endblock %}
+{% block title %}Points — World Cup Fantasy 2026{% endblock %}
 {% block content %}
-<div class="page-header">
-    <h1>Points Breakdown</h1>
-    <div id="total-pts-display" style="margin-left:auto;font-family:var(--font-mono);font-size:13px;color:var(--chalk-muted);background:var(--pitch-mid);border:1px solid var(--card-border);padding:6px 16px;border-radius:var(--r)">
-        Total: <span id="total-pts" style="font-family:var(--font-display);font-size:22px;color:var(--gold);letter-spacing:1px">—</span> pts
+<div class="flex flex-col gap-6 max-w-5xl mx-auto">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <h1 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-text-primary">POINTS</h1>
+        <div class="bg-surface border border-outline-variant rounded-xl px-5 py-3 font-stat-md text-stat-md text-on-surface-variant">
+            Total <span id="total-pts" class="font-headline-lg text-headline-lg text-primary ml-2">—</span>
+        </div>
     </div>
-</div>
 
-<div id="points-breakdown">
-    <div style="text-align:center;padding:60px;color:var(--chalk-muted)">Loading your points…</div>
+    <div id="points-breakdown">
+        <div class="text-center py-16 text-on-surface-variant font-body-sm">Loading your points…</div>
+    </div>
 </div>
 
 <script>
@@ -19,9 +21,9 @@ async function loadPoints() {
     const container = document.getElementById('points-breakdown');
     if (!data.success) {
         container.innerHTML = `
-            <div style="text-align:center;padding:80px;color:var(--chalk-muted)">
-                <div style="font-family:var(--font-display);font-size:48px;color:var(--gold);opacity:0.3;margin-bottom:16px">?</div>
-                <p><a href="/login" style="color:var(--gold)">Sign in</a> to view your points history</p>
+            <div class="text-center py-20 text-on-surface-variant">
+                <span class="material-symbols-outlined text-primary text-5xl mb-4 block opacity-40">analytics</span>
+                <p><a href="/login" class="text-primary underline">Sign in</a> to view your points history</p>
             </div>`;
         return;
     }
@@ -29,42 +31,45 @@ async function loadPoints() {
     const total = data.breakdown.reduce((s, md) => s + md.total_points, 0);
     document.getElementById('total-pts').textContent = total;
 
+    if (!data.breakdown.length) {
+        container.innerHTML = '<div class="text-center py-16 text-on-surface-variant font-body-sm">No matchday points yet</div>';
+        return;
+    }
+
     container.innerHTML = data.breakdown.map(md => `
-        <div class="matchday-block">
-            <h3 style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-                <span>Matchday ${md.matchday}</span>
-                <span style="font-family:var(--font-display);font-size:32px;color:var(--gold);letter-spacing:1px">${md.total_points} <span style="font-size:16px;color:var(--chalk-muted)">pts</span></span>
-            </h3>
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Player</th>
-                        <th>Position</th>
-                        <th style="text-align:center">Mult</th>
-                        <th style="text-align:right">Points</th>
-                        <th style="text-align:center">Role</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${md.players.map(p => `
+        <div class="bg-surface border border-outline-variant rounded-xl overflow-hidden mb-6">
+            <div class="p-4 border-b border-outline-variant bg-surface-container-low flex items-center justify-between flex-wrap gap-2">
+                <h3 class="font-headline-md text-headline-md uppercase">Matchday ${md.matchday}</h3>
+                <span class="font-headline-lg text-headline-lg text-primary">${md.total_points} <span class="text-on-surface-variant text-sm font-body-sm">pts</span></span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="data-table">
+                    <thead>
                         <tr>
-                            <td style="font-weight:600">${p.player?.name || '—'}</td>
-                            <td>
-                                <span class="player-pos ${p.player?.position || ''}" style="font-size:10px">
-                                    ${p.player?.position || '—'}
-                                </span>
-                            </td>
-                            <td style="text-align:center;font-family:var(--font-mono);color:${p.multiplier > 1 ? 'var(--gold)' : 'var(--chalk-muted)'}">${p.multiplier}×</td>
-                            <td style="text-align:right;font-family:var(--font-mono);font-weight:700;color:${p.matchday_points > 0 ? 'var(--success)' : 'var(--chalk-muted)'}">${p.matchday_points}</td>
-                            <td style="text-align:center">
-                                ${p.is_starting
-                                    ? '<span style="font-size:11px;font-weight:600;color:var(--success)">Starting</span>'
-                                    : '<span style="font-size:11px;color:var(--chalk-muted)">Bench</span>'}
-                            </td>
+                            <th>Player</th>
+                            <th>Position</th>
+                            <th style="text-align:center">Mult</th>
+                            <th style="text-align:right">Points</th>
+                            <th style="text-align:center">Role</th>
                         </tr>
-                    `).join('')}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        ${md.players.map(p => `
+                            <tr>
+                                <td style="font-weight:600">${p.player?.name || '—'}</td>
+                                <td><span class="font-stat-md text-xs bg-surface-variant px-1.5 py-0.5 rounded">${p.player?.position || '—'}</span></td>
+                                <td style="text-align:center;font-family:JetBrains Mono,monospace;color:${p.multiplier > 1 ? '#e5c363' : '#9CA3AF'}">${p.multiplier}×</td>
+                                <td style="text-align:right;font-family:JetBrains Mono,monospace;font-weight:700;color:${p.matchday_points > 0 ? '#4edea3' : '#9CA3AF'}">${p.matchday_points}</td>
+                                <td style="text-align:center">
+                                    ${p.is_starting
+                                        ? '<span class="text-tertiary text-xs font-semibold">Starting</span>'
+                                        : '<span class="text-on-surface-variant text-xs">Bench</span>'}
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
         </div>
     `).join('');
 }

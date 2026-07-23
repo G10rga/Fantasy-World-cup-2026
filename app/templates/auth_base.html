@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}WC2026 Fantasy{% endblock %}</title>
+    {% include "partials/tailwind_config.html" %}
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-background text-on-surface min-h-screen font-body-md overflow-x-hidden relative">
+{% block body %}{% endblock %}
+</body>
+</html>

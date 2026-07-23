@@ -1,56 +1,158 @@
-{% extends "base.html" %}
-{% block title %}Register — WC2026 Fantasy{% endblock %}
-{% block content %}
-<div class="auth-form" style="max-width:460px">
-    <div style="margin-bottom:24px">
-        <div style="font-family:var(--font-display);font-size:13px;letter-spacing:2px;color:var(--gold);margin-bottom:6px">WC2026 FANTASY</div>
-        <h1>Create account</h1>
-        <p style="color:var(--chalk-muted);font-size:14px;margin-top:6px">Pick your squad, join leagues, compete globally</p>
+{% extends "auth_base.html" %}
+{% block title %}Register — World Cup Fantasy 2026{% endblock %}
+{% block body %}
+<div class="fixed inset-0 z-0 opacity-40">
+    <div class="absolute inset-0 bg-cover bg-center w-full h-full"
+         style="background-image: url('https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=1920&q=80')"></div>
+    <div class="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent"></div>
+    <div class="absolute inset-0 bg-gradient-to-r from-background via-transparent to-background"></div>
+</div>
+
+<div class="relative z-10 w-full max-w-4xl mx-auto p-4 md:p-8 flex flex-col md:flex-row gap-8 items-stretch min-h-screen">
+    <div class="md:w-5/12 flex flex-col justify-between hidden md:flex py-8">
+        <div>
+            <h1 class="font-display-lg text-display-lg text-primary tracking-wider mb-2 drop-shadow-[0_0_15px_rgba(229,195,99,0.3)]">WORLD CUP<br/>FANTASY</h1>
+            <p class="font-body-lg text-body-lg text-on-surface-variant max-w-xs mt-4">Draft your ultimate squad, compete globally, and claim the ultimate prize.</p>
+        </div>
+        <div class="bg-surface-elevated/80 backdrop-blur-sm border border-outline-variant p-6 rounded-xl mt-8">
+            <div class="flex items-center gap-4 mb-4">
+                <span class="material-symbols-outlined text-primary text-3xl filled">contract</span>
+                <h2 class="font-headline-md text-headline-md text-on-surface">THE CONTRACT</h2>
+            </div>
+            <ul class="space-y-3 font-body-sm text-body-sm text-on-surface-variant">
+                <li class="flex items-start gap-2">
+                    <span class="material-symbols-outlined text-tertiary text-sm mt-0.5">check_circle</span>
+                    <span>$100.0m Starting Budget</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <span class="material-symbols-outlined text-tertiary text-sm mt-0.5">check_circle</span>
+                    <span>Global &amp; Private Leagues</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <span class="material-symbols-outlined text-tertiary text-sm mt-0.5">check_circle</span>
+                    <span>Real-time Scoring</span>
+                </li>
+            </ul>
+        </div>
     </div>
-    <form id="register-form" autocomplete="on">
-        <div class="form-group">
-            <label for="email">Email</label>
-            <input type="email" id="email" name="email" placeholder="you@example.com" required autocomplete="email">
+
+    <div class="w-full md:w-7/12 bg-surface border border-outline-variant rounded-xl shadow-2xl p-6 md:p-8 relative overflow-hidden my-auto">
+        <div class="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-bl-[100px] -z-10 blur-2xl"></div>
+        <div class="md:hidden text-center mb-6">
+            <h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary tracking-wider">WORLD CUP FANTASY</h1>
         </div>
-        <div class="form-group">
-            <label for="username">Username</label>
-            <input type="text" id="username" name="username" placeholder="At least 3 characters" required minlength="3" autocomplete="username">
-        </div>
-        <div class="form-group">
-            <label for="password">Password</label>
-            <input type="password" id="password" name="password" placeholder="At least 8 characters" required minlength="8" autocomplete="new-password">
-        </div>
-        <div class="form-group">
-            <label for="password_confirm">Confirm password</label>
-            <input type="password" id="password_confirm" name="password_confirm" placeholder="Repeat your password" required autocomplete="new-password">
-        </div>
-        <div class="form-group">
-            <label for="supported_nation_id">Supported nation</label>
-            <select id="supported_nation_id" name="supported_nation_id">
-                <option value="">— Choose your team —</option>
-            </select>
-        </div>
-        <div id="error-msg" class="error-msg"></div>
-        <button type="submit" class="btn btn-primary">Create account</button>
-    </form>
-    <p>Already registered? <a href="/login">Sign in</a></p>
+        <h2 class="font-headline-lg text-headline-lg text-on-surface mb-8 hidden md:block border-b border-surface-variant pb-4">MANAGER REGISTRATION</h2>
+        <form id="register-form" class="space-y-8" autocomplete="on">
+            <div class="space-y-4">
+                <div class="flex items-center gap-2 mb-4">
+                    <span class="bg-surface-elevated text-primary font-stat-md text-stat-md w-6 h-6 rounded-full flex items-center justify-center border border-outline-variant">1</span>
+                    <h3 class="font-headline-md text-headline-md text-on-surface">MANAGER DETAILS</h3>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-1">
+                        <label class="font-label-caps text-label-caps text-on-surface-variant block uppercase" for="username">Manager Name</label>
+                        <input id="username" name="username" required minlength="3" autocomplete="username"
+                               class="w-full bg-surface-elevated border border-surface-variant rounded-lg p-3 text-on-surface font-body-md glow-input transition-all duration-300 placeholder-text-secondary"
+                               placeholder="Enter name" type="text"/>
+                    </div>
+                    <div class="space-y-1">
+                        <label class="font-label-caps text-label-caps text-on-surface-variant block uppercase" for="email">Email Address</label>
+                        <input id="email" name="email" required autocomplete="email"
+                               class="w-full bg-surface-elevated border border-surface-variant rounded-lg p-3 text-on-surface font-body-md glow-input transition-all duration-300 placeholder-text-secondary"
+                               placeholder="manager@example.com" type="email"/>
+                    </div>
+                </div>
+                <div class="space-y-1">
+                    <label class="font-label-caps text-label-caps text-on-surface-variant block uppercase" for="password">Password</label>
+                    <input id="password" name="password" required minlength="8" autocomplete="new-password"
+                           class="w-full bg-surface-elevated border border-surface-variant rounded-lg p-3 text-on-surface font-body-md glow-input transition-all duration-300 placeholder-text-secondary"
+                           placeholder="••••••••" type="password"/>
+                </div>
+                <div class="space-y-1">
+                    <label class="font-label-caps text-label-caps text-on-surface-variant block uppercase" for="password_confirm">Confirm Password</label>
+                    <input id="password_confirm" name="password_confirm" required autocomplete="new-password"
+                           class="w-full bg-surface-elevated border border-surface-variant rounded-lg p-3 text-on-surface font-body-md glow-input transition-all duration-300 placeholder-text-secondary"
+                           placeholder="••••••••" type="password"/>
+                </div>
+            </div>
+
+            <div class="space-y-4 pt-4 border-t border-surface-variant">
+                <div class="flex items-center justify-between mb-2 gap-2 flex-wrap">
+                    <div class="flex items-center gap-2">
+                        <span class="bg-surface-elevated text-primary font-stat-md text-stat-md w-6 h-6 rounded-full flex items-center justify-center border border-outline-variant">2</span>
+                        <h3 class="font-headline-md text-headline-md text-on-surface">SUPPORTED NATION</h3>
+                    </div>
+                    <div class="relative">
+                        <span class="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
+                        <input id="nation-search" class="bg-surface-container-lowest border border-surface-variant rounded-md py-1 pl-8 pr-3 text-sm text-on-surface font-body-sm w-32 focus:w-48 transition-all duration-300" placeholder="Search..." type="text"/>
+                    </div>
+                </div>
+                <p class="font-body-sm text-body-sm text-on-surface-variant mb-4">Select your primary nation. This will be displayed on your manager profile.</p>
+                <input type="hidden" id="supported_nation_id" name="supported_nation_id" value="">
+                <div class="grid grid-cols-4 sm:grid-cols-6 gap-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar" id="nations-grid"></div>
+            </div>
+
+            <div id="error-msg" class="error-msg"></div>
+            <div class="pt-2">
+                <button class="w-full bg-primary text-on-primary font-headline-md text-headline-md py-4 rounded-lg hover:brightness-110 active:scale-95 transition-all duration-200 shadow-[0_0_15px_rgba(200,168,75,0.4)] flex items-center justify-center gap-2" type="submit">
+                    CREATE MY SQUAD
+                    <span class="material-symbols-outlined">arrow_forward</span>
+                </button>
+                <p class="text-center mt-4 font-body-sm text-body-sm text-on-surface-variant">
+                    Already have a contract? <a class="text-primary hover:underline font-medium" href="/login">Sign In</a>
+                </p>
+            </div>
+        </form>
+    </div>
 </div>
 
 <script>
+let allCountries = [];
+let selectedNationId = null;
+
+function codeOf(c) {
+    return (c.fifa_code || c.code || c.name || '?').toString().slice(0, 3).toUpperCase();
+}
+
+function renderNations(filter = '') {
+    const grid = document.getElementById('nations-grid');
+    const q = filter.trim().toLowerCase();
+    const list = allCountries.filter(c =>
+        !q || c.name.toLowerCase().includes(q) || codeOf(c).toLowerCase().includes(q)
+    );
+    grid.innerHTML = list.map(c => {
+        const code = codeOf(c);
+        const selected = selectedNationId === c.id ? 'selected' : '';
+        return `
+            <div class="nation-card ${selected} border border-surface-variant rounded-lg p-2 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 aspect-square bg-surface-container-lowest"
+                 data-id="${c.id}">
+                <div class="w-8 h-6 bg-surface-variant rounded mb-1 overflow-hidden flex items-center justify-center border border-outline-variant/50">
+                    ${c.flag_url
+                        ? `<img src="${c.flag_url}" alt="" class="w-full h-full object-cover" onerror="this.remove()">`
+                        : `<span class="font-stat-md text-xs text-on-surface-variant">${code[0]}</span>`}
+                </div>
+                <span class="font-stat-md text-[10px] text-on-surface">${code}</span>
+            </div>`;
+    }).join('');
+    grid.querySelectorAll('.nation-card').forEach(el => {
+        el.addEventListener('click', () => {
+            selectedNationId = parseInt(el.dataset.id, 10);
+            document.getElementById('supported_nation_id').value = selectedNationId;
+            renderNations(document.getElementById('nation-search').value);
+        });
+    });
+}
+
 async function loadCountries() {
     const res = await fetch('/api/countries');
     const data = await res.json();
-    const select = document.getElementById('supported_nation_id');
     if (data.success) {
-        data.countries.forEach(c => {
-            const opt = document.createElement('option');
-            opt.value = c.id;
-            opt.textContent = c.name;
-            select.appendChild(opt);
-        });
+        allCountries = data.countries;
+        renderNations();
     }
 }
-loadCountries();
+
+document.getElementById('nation-search').addEventListener('input', (e) => renderNations(e.target.value));
 
 document.getElementById('register-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -61,9 +163,7 @@ document.getElementById('register-form').addEventListener('submit', async (e) =>
         document.getElementById('error-msg').textContent = 'Passwords do not match.';
         return;
     }
-    btn.textContent = 'Creating…';
     btn.disabled = true;
-    const nationVal = document.getElementById('supported_nation_id').value;
     try {
         const res = await fetch('/api/auth/register', {
             method: 'POST',
@@ -73,22 +173,22 @@ document.getElementById('register-form').addEventListener('submit', async (e) =>
                 username: document.getElementById('username').value,
                 password: pw,
                 password_confirm: pwc,
-                supported_nation_id: nationVal ? parseInt(nationVal) : null,
+                supported_nation_id: selectedNationId,
             }),
         });
         const data = await res.json();
         if (data.success) {
-            window.location.href = '/';
+            window.location.href = '/squad';
         } else {
             document.getElementById('error-msg').textContent = data.message;
-            btn.textContent = 'Create account';
             btn.disabled = false;
         }
     } catch {
         document.getElementById('error-msg').textContent = 'Network error. Try again.';
-        btn.textContent = 'Create account';
         btn.disabled = false;
     }
 });
+
+loadCountries();
 </script>
 {% endblock %}

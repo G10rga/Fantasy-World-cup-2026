@@ -1,29 +1,89 @@
 {% extends "base.html" %}
-{% block title %}My Team — WC2026 Fantasy{% endblock %}
+{% block title %}My Team — World Cup Fantasy 2026{% endblock %}
 {% block content %}
-<div class="page-header">
-    <h1>My Team</h1>
-    <div id="live-indicator" class="live-badge" style="display:none">LIVE</div>
-    <div class="matchday-points">
-        Matchday pts&nbsp;&nbsp;<span id="md-points">0</span>
+<div class="flex flex-col gap-6 max-w-7xl mx-auto w-full">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-surface-container p-4 rounded-xl border border-outline-variant/30">
+        <div class="flex items-center gap-3 flex-wrap">
+            <h1 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-text-primary">MY TEAM</h1>
+            <div id="team-status" class="hidden md:flex items-center gap-2 bg-surface-elevated px-3 py-1 rounded-full border border-surface-bright">
+                <span class="w-2 h-2 rounded-full bg-tertiary"></span>
+                <span class="font-label-caps text-label-caps text-on-surface-variant">TEAM SAVED</span>
+            </div>
+            <div id="live-indicator" class="hidden items-center gap-2 bg-danger/20 px-3 py-1 rounded-full border border-danger/40">
+                <span class="w-2 h-2 rounded-full bg-danger animate-pulse"></span>
+                <span class="font-label-caps text-label-caps text-danger">LIVE</span>
+            </div>
+            <div class="font-stat-md text-stat-md text-on-surface-variant">
+                MD pts <span id="md-points" class="text-primary font-bold">0</span>
+            </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+            <div class="bg-surface-elevated rounded-lg p-1 flex border border-outline-variant/50" id="formation-pills">
+                <button type="button" data-f="4-3-3" class="formation-btn px-3 py-1.5 rounded-md font-stat-md text-sm text-primary bg-surface-bright">4-3-3</button>
+                <button type="button" data-f="4-4-2" class="formation-btn px-3 py-1.5 rounded-md font-stat-md text-sm text-text-secondary hover:text-on-surface">4-4-2</button>
+                <button type="button" data-f="3-5-2" class="formation-btn px-3 py-1.5 rounded-md font-stat-md text-sm text-text-secondary hover:text-on-surface">3-5-2</button>
+            </div>
+            <a href="/squad" class="flex-grow md:flex-grow-0 text-center bg-primary-container hover:bg-primary-fixed text-on-primary-container font-label-caps text-label-caps px-6 py-2.5 rounded-lg font-bold transition-colors shadow-[0_0_15px_rgba(200,168,75,0.2)]">
+                EDIT SQUAD
+            </a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow">
+        <div class="lg:col-span-9 flex flex-col gap-4">
+            <div id="team-pitch" class="relative w-full aspect-[3/4] md:aspect-[4/3] rounded-xl overflow-hidden border border-outline-variant/50 shadow-2xl pitch-bg">
+                <div class="absolute inset-0 border-[2px] border-white/10 m-4 rounded-sm pointer-events-none"></div>
+                <div class="absolute inset-x-0 top-1/2 h-[2px] bg-white/10 pointer-events-none"></div>
+                <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 rounded-full border-[2px] border-white/10 pointer-events-none"></div>
+                <div class="absolute inset-0 flex items-center justify-center text-white/30 font-headline-md" id="pitch-placeholder">LOADING SQUAD…</div>
+            </div>
+
+            <div class="bg-surface border border-outline-variant rounded-xl p-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-headline-md text-headline-md uppercase">Substitutes</h3>
+                    <span class="font-stat-md text-stat-md text-on-surface-variant">Bench Points: <span id="bench-points">0</span></span>
+                </div>
+                <div id="team-bench" class="flex gap-4 overflow-x-auto no-scrollbar pb-1"></div>
+            </div>
+        </div>
+
+        <div class="lg:col-span-3 flex flex-col gap-4">
+            <div class="bg-surface border border-outline-variant rounded-xl p-4 space-y-3">
+                <h3 class="font-headline-md text-headline-md uppercase mb-2">Team Stats</h3>
+                <div class="flex justify-between font-body-sm text-body-sm">
+                    <span class="text-on-surface-variant">Average Value</span>
+                    <span id="avg-value" class="font-stat-md text-stat-md text-primary">—</span>
+                </div>
+                <div id="captain-widget" class="pt-2 border-t border-outline-variant/40 text-on-surface-variant font-body-sm"></div>
+            </div>
+
+            <div id="boosters-panel" class="bg-surface border border-outline-variant rounded-xl p-4">
+                <h3 class="font-headline-md text-headline-md uppercase mb-3">Boosters</h3>
+                <div id="boosters-list" class="space-y-2 text-on-surface-variant font-body-sm">Loading…</div>
+            </div>
+
+            <div class="bg-surface border border-outline-variant rounded-xl p-4 flex-1">
+                <h3 class="font-headline-md text-headline-md uppercase mb-3">Live Points</h3>
+                <ul id="live-points-list" class="space-y-2 font-body-sm text-body-sm text-on-surface-variant max-h-64 overflow-y-auto custom-scrollbar">
+                    <li>No live data</li>
+                </ul>
+            </div>
+        </div>
     </div>
 </div>
 
-<div class="my-team-layout">
-    <div class="pitch" id="team-pitch">
-        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.15);font-family:var(--font-display);font-size:14px;letter-spacing:2px;pointer-events:none" id="pitch-placeholder">LOADING SQUAD…</div>
+<!-- Captain modal -->
+<div id="captain-modal" class="modal" style="display:none">
+    <div class="modal-content">
+        <h3>Change Captain</h3>
+        <label class="font-label-caps text-label-caps text-on-surface-variant">Captain</label>
+        <select id="modal-captain"></select>
+        <label class="font-label-caps text-label-caps text-on-surface-variant">Vice Captain</label>
+        <select id="modal-vice"></select>
+        <div id="captain-msg" class="error-msg"></div>
+        <button class="w-full bg-primary-container text-on-primary-container font-bold py-3 rounded-lg" id="confirm-captain">Save</button>
+        <button class="w-full border border-outline-variant text-on-surface py-2 rounded-lg" id="cancel-captain">Cancel</button>
     </div>
-    <div class="bench" id="team-bench">
-        <div style="font-family:var(--font-display);font-size:14px;letter-spacing:2px;color:var(--chalk-muted);margin-bottom:12px">BENCH</div>
-    </div>
-    <aside class="team-sidebar">
-        <h3>Captaincy</h3>
-        <div id="captain-widget" style="font-size:14px;color:var(--chalk-muted)">—</div>
-        <h3>Live Points</h3>
-        <ul id="live-points-list">
-            <li style="color:var(--chalk-muted);font-size:13px">No live data</li>
-        </ul>
-    </aside>
 </div>
 {% endblock %}
 {% block scripts %}

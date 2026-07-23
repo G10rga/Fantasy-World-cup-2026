@@ -1,6 +1,10 @@
 {% extends "base.html" %}
-{% block title %}500 - Server Error{% endblock %}
+{% block title %}500 — Server Error{% endblock %}
 {% block content %}
-<h1>500 — Server Error</h1>
-<p>Something went wrong. Please try again later.</p>
+<div class="text-center py-24">
+    <span class="material-symbols-outlined text-danger text-6xl mb-4 block opacity-50">error</span>
+    <h1 class="font-headline-lg text-headline-lg text-text-primary mb-3">500 — SERVER ERROR</h1>
+    <p class="text-on-surface-variant font-body-md mb-8">Something went wrong on our end. Try again shortly.</p>
+    <a href="/" class="inline-block bg-primary-container text-on-primary-container font-label-caps text-label-caps px-6 py-3 rounded-lg font-bold hover:brightness-110">Return to Dashboard</a>
+</div>
 {% endblock %}

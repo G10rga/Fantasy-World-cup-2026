@@ -1,65 +1,69 @@
 {% extends "base.html" %}
-{% block title %}Leaderboard — WC2026 Fantasy{% endblock %}
+{% block title %}Leaderboard — World Cup Fantasy 2026{% endblock %}
 {% block content %}
-<div class="page-header">
-    <h1>Leaderboard</h1>
-    <div class="tabs" style="margin-left:auto">
-        <button class="tab active" data-tab="overall">Overall</button>
-        <button class="tab" data-tab="country">By Country</button>
-        <button class="tab" data-tab="matchday">By Matchday</button>
+<div class="flex flex-col gap-6 max-w-5xl mx-auto">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <h1 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-text-primary">LEADERBOARD</h1>
+        <div class="tabs flex gap-1 bg-surface-elevated rounded-lg p-1 border border-outline-variant/50">
+            <button class="tab active px-4 py-2 rounded-md font-label-caps text-label-caps transition-colors" data-tab="overall" type="button">Overall</button>
+            <button class="tab px-4 py-2 rounded-md font-label-caps text-label-caps text-on-surface-variant hover:text-on-surface transition-colors" data-tab="country" type="button">By Country</button>
+            <button class="tab px-4 py-2 rounded-md font-label-caps text-label-caps text-on-surface-variant hover:text-on-surface transition-colors" data-tab="matchday" type="button">By Matchday</button>
+        </div>
     </div>
-</div>
 
-<div id="tab-overall" class="tab-content" style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--r-lg);padding:20px">
-    <table class="data-table" id="overall-table">
-        <thead>
-            <tr>
-                <th style="width:60px">Rank</th>
-                <th>Manager</th>
-                <th>Nation</th>
-                <th style="text-align:right">Points</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr><td colspan="4" style="text-align:center;color:var(--chalk-muted);padding:40px">Loading…</td></tr>
-        </tbody>
-    </table>
-    <div class="pagination" id="overall-pagination"></div>
-</div>
+    <div id="tab-overall" class="tab-content bg-surface border border-outline-variant rounded-xl overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="data-table" id="overall-table">
+                <thead>
+                    <tr>
+                        <th style="width:60px">Rank</th>
+                        <th>Manager</th>
+                        <th>Nation</th>
+                        <th style="text-align:right">Points</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td colspan="4" style="text-align:center;color:#9CA3AF;padding:40px">Loading…</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="pagination flex items-center justify-center gap-4 p-4 border-t border-outline-variant font-body-sm text-on-surface-variant" id="overall-pagination"></div>
+    </div>
 
-<div id="tab-country" class="tab-content" style="display:none">
-    <div style="margin-bottom:16px">
-        <select id="country-select" style="width:240px">
-            <option value="">Select a country</option>
-        </select>
+    <div id="tab-country" class="tab-content" style="display:none">
+        <div class="mb-4">
+            <select id="country-select" class="bg-surface-elevated border border-outline-variant rounded-lg px-3 py-2 text-on-surface focus:border-primary focus:outline-none w-full max-w-xs">
+                <option value="">Select a country</option>
+            </select>
+        </div>
+        <div class="bg-surface border border-outline-variant rounded-xl overflow-hidden">
+            <table class="data-table" id="country-table">
+                <thead><tr><th style="width:60px">Rank</th><th>Manager</th><th style="text-align:right">Points</th></tr></thead>
+                <tbody><tr><td colspan="3" style="text-align:center;color:#9CA3AF;padding:40px">Select a country above</td></tr></tbody>
+            </table>
+        </div>
     </div>
-    <div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--r-lg);padding:20px">
-        <table class="data-table" id="country-table">
-            <thead><tr><th style="width:60px">Rank</th><th>Manager</th><th style="text-align:right">Points</th></tr></thead>
-            <tbody><tr><td colspan="3" style="text-align:center;color:var(--chalk-muted);padding:40px">Select a country above</td></tr></tbody>
-        </table>
-    </div>
-</div>
 
-<div id="tab-matchday" class="tab-content" style="display:none">
-    <div style="margin-bottom:16px">
-        <select id="matchday-select" style="width:160px">
-            <option value="1">Matchday 1</option>
-        </select>
-    </div>
-    <div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--r-lg);padding:20px">
-        <table class="data-table" id="matchday-table">
-            <thead><tr><th style="width:60px">Rank</th><th>Manager</th><th style="text-align:right">Points</th></tr></thead>
-            <tbody><tr><td colspan="3" style="text-align:center;color:var(--chalk-muted);padding:40px">Loading…</td></tr></tbody>
-        </table>
+    <div id="tab-matchday" class="tab-content" style="display:none">
+        <div class="mb-4">
+            <select id="matchday-select" class="bg-surface-elevated border border-outline-variant rounded-lg px-3 py-2 text-on-surface focus:border-primary focus:outline-none w-40">
+                <option value="1">Matchday 1</option>
+            </select>
+        </div>
+        <div class="bg-surface border border-outline-variant rounded-xl overflow-hidden">
+            <table class="data-table" id="matchday-table">
+                <thead><tr><th style="width:60px">Rank</th><th>Manager</th><th style="text-align:right">Points</th></tr></thead>
+                <tbody><tr><td colspan="3" style="text-align:center;color:#9CA3AF;padding:40px">Loading…</td></tr></tbody>
+            </table>
+        </div>
     </div>
 </div>
 
 <script>
 function medal(rank) {
-    if (rank === 1) return '🥇';
-    if (rank === 2) return '🥈';
-    if (rank === 3) return '🥉';
+    if (rank === 1) return '1';
+    if (rank === 2) return '2';
+    if (rank === 3) return '3';
     return rank;
 }
 
@@ -67,26 +71,26 @@ async function loadOverall(page = 1) {
     const res = await fetch(`/api/leaderboard/overall?page=${page}&limit=50`);
     const data = await res.json();
     const tbody = document.querySelector('#overall-table tbody');
-    tbody.innerHTML = data.leaderboard.map(r => `
+    tbody.innerHTML = (data.leaderboard || []).map(r => `
         <tr>
-            <td style="font-family:var(--font-mono);font-size:13px">${medal(r.rank)}</td>
+            <td style="font-family:JetBrains Mono,monospace;font-size:13px;color:${r.rank <= 3 ? '#e5c363' : 'inherit'}">${medal(r.rank)}</td>
             <td style="font-weight:600">${r.username}</td>
-            <td style="color:var(--chalk-muted)">${r.supported_nation?.name || '—'}</td>
-            <td style="text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--gold)">${r.total_points}</td>
+            <td style="color:#9CA3AF">${r.supported_nation?.name || '—'}</td>
+            <td style="text-align:right;font-family:JetBrains Mono,monospace;font-weight:700;color:#e5c363">${r.total_points}</td>
         </tr>
-    `).join('');
+    `).join('') || '<tr><td colspan="4" style="text-align:center;padding:40px;color:#9CA3AF">No managers yet</td></tr>';
     const pag = document.getElementById('overall-pagination');
     pag.innerHTML =
-        `<span>Page ${data.page} of ${data.pages}</span>` +
-        (data.page > 1 ? `<button onclick="loadOverall(${data.page-1})">← Prev</button>` : '') +
-        (data.page < data.pages ? `<button onclick="loadOverall(${data.page+1})">Next →</button>` : '');
+        `<span>Page ${data.page || 1} of ${data.pages || 1}</span>` +
+        (data.page > 1 ? `<button class="text-primary hover:underline" onclick="loadOverall(${data.page-1})">← Prev</button>` : '') +
+        (data.page < data.pages ? `<button class="text-primary hover:underline" onclick="loadOverall(${data.page+1})">Next →</button>` : '');
 }
 
 async function loadCountries() {
     const res = await fetch('/api/countries');
     const data = await res.json();
     const select = document.getElementById('country-select');
-    data.countries.forEach(c => {
+    (data.countries || []).forEach(c => {
         const opt = document.createElement('option');
         opt.value = c.id;
         opt.textContent = c.name;
@@ -97,11 +101,11 @@ async function loadCountries() {
 async function loadCountryLeaderboard(countryId) {
     const res = await fetch(`/api/leaderboard/country/${countryId}`);
     const data = await res.json();
-    document.querySelector('#country-table tbody').innerHTML = data.leaderboard.map(r => `
+    document.querySelector('#country-table tbody').innerHTML = (data.leaderboard || []).map(r => `
         <tr>
-            <td style="font-family:var(--font-mono)">${medal(r.rank)}</td>
+            <td style="font-family:JetBrains Mono,monospace;color:${r.rank <= 3 ? '#e5c363' : 'inherit'}">${medal(r.rank)}</td>
             <td style="font-weight:600">${r.username}</td>
-            <td style="text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--gold)">${r.total_points}</td>
+            <td style="text-align:right;font-family:JetBrains Mono,monospace;font-weight:700;color:#e5c363">${r.total_points}</td>
         </tr>
     `).join('');
 }
@@ -109,20 +113,24 @@ async function loadCountryLeaderboard(countryId) {
 async function loadMatchdayLeaderboard(md) {
     const res = await fetch(`/api/leaderboard/matchday/${md}`);
     const data = await res.json();
-    document.querySelector('#matchday-table tbody').innerHTML = data.leaderboard.map(r => `
+    document.querySelector('#matchday-table tbody').innerHTML = (data.leaderboard || []).map(r => `
         <tr>
-            <td style="font-family:var(--font-mono)">${medal(r.rank)}</td>
+            <td style="font-family:JetBrains Mono,monospace;color:${r.rank <= 3 ? '#e5c363' : 'inherit'}">${medal(r.rank)}</td>
             <td style="font-weight:600">${r.username}</td>
-            <td style="text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--gold)">${r.matchday_points}</td>
+            <td style="text-align:right;font-family:JetBrains Mono,monospace;font-weight:700;color:#e5c363">${r.matchday_points}</td>
         </tr>
     `).join('');
 }
 
 document.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', () => {
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab').forEach(t => {
+            t.classList.remove('active', 'bg-primary-container', 'text-on-primary-container');
+            t.classList.add('text-on-surface-variant');
+        });
         document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
         tab.classList.add('active');
+        tab.classList.remove('text-on-surface-variant');
         document.getElementById('tab-' + tab.dataset.tab).style.display = 'block';
     });
 });

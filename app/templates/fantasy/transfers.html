@@ -1,56 +1,64 @@
 {% extends "base.html" %}
-{% block title %}Transfers — WC2026 Fantasy{% endblock %}
+{% block title %}Transfers — World Cup Fantasy 2026{% endblock %}
 {% block content %}
-<div class="page-header">
-    <h1>Transfers</h1>
-    <div id="transfer-budget-info" style="margin-left:auto"></div>
-</div>
+<div class="flex flex-col gap-6 max-w-6xl mx-auto">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <h1 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-text-primary">TRANSFERS</h1>
+        <div id="transfer-budget-info" class="bg-surface border border-outline-variant rounded-xl px-4 py-3 font-body-sm text-body-sm text-on-surface-variant"></div>
+    </div>
 
-<div class="transfers-layout">
-    <section class="transfer-wizard">
-        <h3>Make a Transfer</h3>
-        <div style="background:var(--pitch-mid);border:1px solid var(--card-border);border-radius:var(--r);padding:12px 16px;font-size:13px;color:var(--chalk-muted);margin-bottom:20px">
-            One free transfer per matchday. Additional transfers cost <strong style="color:var(--live)">–4 pts</strong> each.
-        </div>
-        <div class="form-group">
-            <label>Player Out</label>
-            <select id="player-out">
-                <option value="">— Select player to remove —</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label>Player In</label>
-            <select id="player-in">
-                <option value="">— Select replacement —</option>
-            </select>
-        </div>
-        <button class="btn btn-primary" id="confirm-transfer" style="width:100%;justify-content:center">Confirm Transfer</button>
-        <div id="transfer-msg" class="error-msg" style="margin-top:10px"></div>
-    </section>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <section class="bg-surface border border-outline-variant rounded-xl p-6">
+            <h3 class="font-headline-md text-headline-md uppercase mb-4">Make a Transfer</h3>
+            <div class="bg-surface-container-low border border-outline-variant rounded-lg p-3 font-body-sm text-body-sm text-on-surface-variant mb-5">
+                One free transfer per matchday. Additional transfers cost <strong class="text-danger">–4 pts</strong> each.
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="font-label-caps text-label-caps text-on-surface-variant block mb-2" for="player-out">Player Out</label>
+                    <select id="player-out" class="w-full bg-surface-elevated border border-outline-variant rounded-lg px-3 py-3 text-on-surface focus:border-primary focus:outline-none">
+                        <option value="">— Select player to remove —</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="font-label-caps text-label-caps text-on-surface-variant block mb-2" for="player-in">Player In</label>
+                    <select id="player-in" class="w-full bg-surface-elevated border border-outline-variant rounded-lg px-3 py-3 text-on-surface focus:border-primary focus:outline-none">
+                        <option value="">— Select replacement —</option>
+                    </select>
+                </div>
+                <button class="w-full bg-primary-container text-on-primary-container font-headline-md text-headline-md py-3 rounded-lg hover:brightness-110 transition-all" id="confirm-transfer" type="button">
+                    Confirm Transfer
+                </button>
+                <div id="transfer-msg" class="error-msg"></div>
+            </div>
+        </section>
 
-    <section class="boosters-panel">
-        <h3>Boosters</h3>
-        <div id="boosters-list" style="display:flex;flex-direction:column;gap:10px">
-            <div style="color:var(--chalk-muted);font-size:13px">Loading boosters…</div>
-        </div>
-    </section>
+        <section id="boosters" class="bg-surface border border-outline-variant rounded-xl p-6">
+            <h3 class="font-headline-md text-headline-md uppercase mb-4">Boosters</h3>
+            <div id="boosters-list" class="flex flex-col gap-3">
+                <div class="text-on-surface-variant font-body-sm">Loading boosters…</div>
+            </div>
+        </section>
+    </div>
 
-    <section class="transfer-history">
-        <h3>Transfer History</h3>
-        <table class="data-table" id="transfer-table">
-            <thead>
-                <tr>
-                    <th>Out</th>
-                    <th>In</th>
-                    <th style="text-align:center">MD</th>
-                    <th style="text-align:center">Cost</th>
-                    <th>Date</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr><td colspan="5" style="text-align:center;color:var(--chalk-muted);padding:40px">Loading transfer history…</td></tr>
-            </tbody>
-        </table>
+    <section class="bg-surface border border-outline-variant rounded-xl p-6">
+        <h3 class="font-headline-md text-headline-md uppercase mb-4">Transfer History</h3>
+        <div class="overflow-x-auto rounded-xl border border-outline-variant">
+            <table class="data-table" id="transfer-table">
+                <thead>
+                    <tr>
+                        <th>Out</th>
+                        <th>In</th>
+                        <th style="text-align:center">MD</th>
+                        <th style="text-align:center">Cost</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td colspan="5" style="text-align:center;color:#9CA3AF;padding:40px">Loading transfer history…</td></tr>
+                </tbody>
+            </table>
+        </div>
     </section>
 </div>
 {% endblock %}

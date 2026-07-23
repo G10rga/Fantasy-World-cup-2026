@@ -1,248 +1,293 @@
 const POSITION_LIMITS = { GK: 2, DEF: 5, MID: 5, FWD: 3 };
+const STARTING_SLOTS = { GK: 1, DEF: 4, MID: 4, FWD: 2 }; // visual default 4-4-2-ish display slots for empty circles; actual XI rules still apply
 const SQUAD_SIZE = 15;
 const STARTING_XI = 11;
 const BUDGET = 100.0;
 
 let squad = [];
 let allPlayers = [];
+let searchQuery = '';
 
 function positionCount(pos) {
-    return squad.filter(p => p.position === pos).length;
+  return squad.filter((p) => p.position === pos).length;
 }
 
 function squadCost() {
-    return squad.reduce((sum, p) => sum + p.price, 0);
+  return squad.reduce((sum, p) => sum + p.price, 0);
+}
+
+function shortName(name) {
+  if (!name) return '';
+  const parts = name.trim().split(/\s+/);
+  return (parts[parts.length - 1] || name).toUpperCase().slice(0, 10);
 }
 
 function updateBudget() {
-    const remaining = BUDGET - squadCost();
-    document.getElementById('budget-remaining').textContent = `$${remaining.toFixed(1)}m`;
-    document.getElementById('squad-count').textContent = `${squad.length}/${SQUAD_SIZE}`;
-    document.getElementById('budget-remaining').classList.toggle('over-budget', remaining < 0);
+  const remaining = BUDGET - squadCost();
+  const spent = squadCost();
+  const remEl = document.getElementById('budget-remaining');
+  remEl.textContent = `$${remaining.toFixed(1)}m`;
+  remEl.classList.toggle('over-budget', remaining < 0);
+  document.getElementById('squad-count').textContent = `${squad.length} / ${SQUAD_SIZE}`;
+  document.getElementById('squad-count-footer').textContent = `${squad.length} / ${SQUAD_SIZE}`;
+  document.getElementById('budget-bar-label').textContent = `$${spent.toFixed(1)}m / $${BUDGET.toFixed(1)}m`;
+  document.getElementById('budget-bar').style.width = `${Math.min(100, (spent / BUDGET) * 100)}%`;
 }
 
-function renderPlayerCard(player) {
-    const inSquad = squad.some(p => p.id === player.id);
-    const scouting = player.scouting_bonus_eligible ? '<span class="badge scout">Scout</span>' : '';
-    const avail = player.is_available
-        ? `<span class="badge avail">${player.availability_status}</span>`
-        : `<span class="badge unavail">${player.availability_status}</span>`;
-
-    const formSpark = (player.form || []).map(v =>
-        `<span class="spark-bar" style="height:${Math.max(v * 3, 2)}px" title="${v}pts"></span>`
-    ).join('');
-
-    return `
-        <div class="player-card ${inSquad ? 'in-squad' : ''}" data-id="${player.id}">
-            <img class="player-photo" src="${player.photo_url || '/static/img/placeholder.png'}"
-                 alt="${player.name}" onerror="this.style.display='none'">
-            ${player.country?.flag_url ? `<img class="flag" src="${player.country.flag_url}" alt="">` : ''}
-            <span class="pos-badge ${player.position}">${player.position}</span>
-            <h4>${player.name}</h4>
-            <p class="price">$${player.price}m</p>
-            <p class="pts">Total: ${player.total_pts} | MD: ${player.this_matchday_pts}</p>
-            <p class="selected">${player.selected_by_pct}% selected</p>
-            <div class="form-sparkline">${formSpark}</div>
-            ${scouting} ${avail}
-            <button class="btn btn-sm ${inSquad ? 'btn-remove' : 'btn-add'}"
-                    onclick="${inSquad ? 'removePlayer' : 'addPlayer'}(${player.id})">
-                ${inSquad ? 'Remove' : 'Add'}
-            </button>
+function renderPlayerRow(player) {
+  const inSquad = squad.some((p) => p.id === player.id);
+  const code = (player.country?.fifa_code || player.country?.code || player.country?.name || '').toString().slice(0, 3).toUpperCase();
+  const photo = player.photo_url || '';
+  return `
+    <div class="flex items-center justify-between p-3 rounded-xl ${inSquad ? 'bg-surface-elevated border border-primary/40' : 'bg-surface-container-low border border-transparent'} hover:border-outline-variant hover:bg-surface-elevated transition-colors mb-2 group">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="w-10 h-10 rounded-full bg-surface-variant border border-outline overflow-hidden flex-shrink-0 flex items-center justify-center">
+          ${photo
+            ? `<img alt="" class="w-full h-full object-cover" src="${photo}" onerror="this.parentElement.innerHTML='<span class=\\'material-symbols-outlined text-outline-variant\\'>person</span>'">`
+            : `<span class="material-symbols-outlined text-outline-variant">person</span>`}
         </div>
-    `;
+        <div class="min-w-0">
+          <div class="font-bold text-sm text-on-surface group-hover:text-primary transition-colors truncate">${player.name}</div>
+          <div class="flex items-center gap-2 text-xs text-on-surface-variant mt-0.5">
+            <span class="font-stat-md bg-surface-variant px-1 rounded">${player.position}</span>
+            <span>${code}</span>
+            ${player.scouting_bonus_eligible ? '<span class="text-tertiary">Scout</span>' : ''}
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center gap-4 flex-shrink-0">
+        <div class="text-right">
+          <div class="font-stat-md text-primary font-bold text-sm">$${player.price}m</div>
+          <div class="text-xs text-on-surface-variant">${player.total_pts} pts</div>
+        </div>
+        <button type="button" class="w-8 h-8 rounded ${inSquad ? 'bg-danger/20 text-danger hover:bg-danger/30' : 'bg-surface-variant hover:bg-primary-container hover:text-on-primary-container text-on-surface'} flex items-center justify-center transition-colors border border-outline-variant"
+                onclick="${inSquad ? 'removePlayer' : 'addPlayer'}(${player.id})">
+          <span class="material-symbols-outlined text-sm">${inSquad ? 'remove' : 'add'}</span>
+        </button>
+      </div>
+    </div>`;
 }
 
 function renderPlayerGrid(players) {
-    document.getElementById('player-grid').innerHTML = players.map(renderPlayerCard).join('');
+  let list = players;
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    list = list.filter((p) => p.name.toLowerCase().includes(q));
+  }
+  const grid = document.getElementById('player-grid');
+  if (!list.length) {
+    grid.innerHTML = '<div class="text-center py-16 text-on-surface-variant font-body-sm">No players found</div>';
+    return;
+  }
+  grid.innerHTML = list.map(renderPlayerRow).join('');
+}
+
+function emptySlot(pos) {
+  return `
+    <div class="flex flex-col items-center">
+      <div class="w-14 h-14 md:w-16 md:h-16 rounded-full bg-surface-elevated border-2 border-dashed border-outline-variant flex items-center justify-center shadow-lg cursor-default">
+        <span class="material-symbols-outlined text-outline-variant">add</span>
+      </div>
+      <span class="text-xs font-medium mt-3 text-outline-variant">${pos === 'FWD' ? 'FWD' : pos === 'MID' ? 'MID' : pos === 'DEF' ? 'DEF' : 'GK'}</span>
+    </div>`;
+}
+
+function filledSlot(player) {
+  const photo = player.photo_url || '';
+  return `
+    <div class="flex flex-col items-center cursor-pointer" onclick="removePlayer(${player.id})" title="Remove ${player.name}">
+      <div class="w-14 h-14 md:w-16 md:h-16 rounded-full bg-surface-elevated border-2 border-primary flex items-center justify-center shadow-lg relative hover:scale-105 transition-transform overflow-hidden">
+        ${photo
+          ? `<img src="${photo}" class="w-full h-full object-cover" alt="" onerror="this.remove()">`
+          : `<span class="material-symbols-outlined text-primary">person</span>`}
+        <div class="absolute -bottom-2 bg-surface px-2 py-0.5 rounded text-[10px] font-stat-md border border-outline-variant text-primary">$${player.price}</div>
+      </div>
+      <span class="text-xs font-bold mt-3 bg-surface/80 px-2 py-1 rounded">${shortName(player.name)}</span>
+    </div>`;
 }
 
 function renderPitch() {
-    const starters = squad.filter(p => p.is_starting);
-    const bench = squad.filter(p => !p.is_starting).sort((a, b) => a.bench_order - b.bench_order);
+  const starters = squad.filter((p) => p.is_starting);
+  const byPos = { GK: [], DEF: [], MID: [], FWD: [] };
+  starters.forEach((p) => byPos[p.position]?.push(p));
 
-    const byPos = { GK: [], DEF: [], MID: [], FWD: [] };
-    starters.forEach(p => byPos[p.position]?.push(p));
+  // Show filled starters + empty slots up to visual starting counts (capped by limits)
+  function row(pos, maxShow) {
+    const filled = byPos[pos] || [];
+    const slots = [];
+    filled.forEach((p) => slots.push(filledSlot(p)));
+    const empties = Math.max(0, maxShow - filled.length);
+    for (let i = 0; i < empties; i++) slots.push(emptySlot(pos));
+    return `<div class="flex justify-center gap-3 md:gap-4 w-full flex-wrap">${slots.join('')}</div>`;
+  }
 
-    const pitchHtml = ['GK', 'DEF', 'MID', 'FWD'].map(pos => `
-        <div class="pitch-row pitch-${pos.toLowerCase()}">
-            ${(byPos[pos] || []).map(p => pitchSlot(p)).join('')}
-        </div>
-    `).join('');
+  // Visual formation rows: FWD / MID / DEF / GK (top to bottom like design)
+  document.getElementById('pitch-view').innerHTML = `
+    ${row('FWD', 3)}
+    ${row('MID', 5)}
+    ${row('DEF', 5)}
+    ${row('GK', 1)}
+  `;
 
-    document.getElementById('pitch-view').innerHTML = pitchHtml || '<p class="empty-pitch">Add players to build your squad</p>';
-    document.getElementById('bench-view').innerHTML = bench.length
-        ? `<h4>Bench</h4>${bench.map(p => pitchSlot(p, true)).join('')}`
-        : '';
-
-    updateCaptainSelects();
-}
-
-function pitchSlot(player, isBench = false) {
-    return `
-        <div class="pitch-player" data-id="${player.id}">
-            <span class="pos-badge ${player.position}">${player.position}</span>
-            <span>${player.name}</span>
-            <span class="price">$${player.price}m</span>
-            ${!isBench ? `<button class="btn-xs" onclick="toggleStarting(${player.id}, false)">To Bench</button>` : ''}
-            ${isBench ? `<button class="btn-xs" onclick="toggleStarting(${player.id}, true)">To XI</button>` : ''}
-        </div>
-    `;
+  updateCaptainSelects();
 }
 
 function updateCaptainSelects() {
-    const starters = squad.filter(p => p.is_starting);
-    const capSel = document.getElementById('captain-select');
-    const viceSel = document.getElementById('vice-select');
-    const capVal = capSel.value;
-    const viceVal = viceSel.value;
-
-    capSel.innerHTML = starters.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-    viceSel.innerHTML = starters.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-
-    if (capVal) capSel.value = capVal;
-    if (viceVal) viceSel.value = viceVal;
+  const starters = squad.filter((p) => p.is_starting);
+  const capSel = document.getElementById('captain-select');
+  const viceSel = document.getElementById('vice-select');
+  const capVal = capSel.value;
+  const viceVal = viceSel.value;
+  const opts = starters.map((p) => `<option value="${p.id}">${p.name}</option>`).join('') || '<option value="">— Select —</option>';
+  capSel.innerHTML = opts;
+  viceSel.innerHTML = opts;
+  if (capVal) capSel.value = capVal;
+  if (viceVal) viceSel.value = viceVal;
 }
 
-window.addPlayer = function(id) {
-    const player = allPlayers.find(p => p.id === id);
-    if (!player) return;
-    if (squad.length >= SQUAD_SIZE) { alert('Squad is full (15 players)'); return; }
-    if (positionCount(player.position) >= POSITION_LIMITS[player.position]) {
-        alert(`Maximum ${POSITION_LIMITS[player.position]} ${player.position} players`);
-        return;
-    }
-    const countryCount = squad.filter(p => p.country_id === player.country_id).length;
-    if (countryCount >= 3) { alert('Maximum 3 players from same country'); return; }
+window.addPlayer = function (id) {
+  const player = allPlayers.find((p) => p.id === id);
+  if (!player) return;
+  if (squad.length >= SQUAD_SIZE) { alert('Squad is full (15 players)'); return; }
+  if (positionCount(player.position) >= POSITION_LIMITS[player.position]) {
+    alert(`Maximum ${POSITION_LIMITS[player.position]} ${player.position} players`);
+    return;
+  }
+  const countryCount = squad.filter((p) => p.country_id === player.country_id).length;
+  if (countryCount >= 3) { alert('Maximum 3 players from same country'); return; }
 
-    const isStarting = squad.filter(p => p.is_starting).length < STARTING_XI;
-    squad.push({
-        ...player,
-        is_starting: isStarting,
-        bench_order: isStarting ? null : squad.filter(p => !p.is_starting).length + 1,
-    });
-    refresh();
+  const isStarting = squad.filter((p) => p.is_starting).length < STARTING_XI;
+  squad.push({
+    ...player,
+    is_starting: isStarting,
+    bench_order: isStarting ? null : squad.filter((p) => !p.is_starting).length + 1,
+  });
+  refresh();
 };
 
-window.removePlayer = function(id) {
-    squad = squad.filter(p => p.id !== id);
-    reindexBench();
-    refresh();
-};
-
-window.toggleStarting = function(id, toStarting) {
-    const player = squad.find(p => p.id === id);
-    if (!player) return;
-
-    if (toStarting) {
-        if (squad.filter(p => p.is_starting).length >= STARTING_XI) {
-            alert('Starting XI is full'); return;
-        }
-        player.is_starting = true;
-        player.bench_order = null;
-    } else {
-        player.is_starting = false;
-        player.bench_order = squad.filter(p => !p.is_starting).length + 1;
-    }
-    reindexBench();
-    refresh();
+window.removePlayer = function (id) {
+  squad = squad.filter((p) => p.id !== id);
+  reindexBench();
+  refresh();
 };
 
 function reindexBench() {
-    squad.filter(p => !p.is_starting)
-        .sort((a, b) => (a.bench_order || 99) - (b.bench_order || 99))
-        .forEach((p, i) => { p.bench_order = i + 1; });
+  squad.filter((p) => !p.is_starting)
+    .sort((a, b) => (a.bench_order || 99) - (b.bench_order || 99))
+    .forEach((p, i) => { p.bench_order = i + 1; });
 }
 
 function refresh() {
-    updateBudget();
-    renderPlayerGrid(allPlayers);
-    renderPitch();
+  updateBudget();
+  renderPlayerGrid(allPlayers);
+  renderPitch();
 }
 
 async function loadPlayers() {
-    const pos = document.getElementById('filter-position').value;
-    const country = document.getElementById('filter-country').value;
-    const price = document.getElementById('filter-price').value;
-    const sort = document.getElementById('filter-sort').value;
+  const pos = document.getElementById('filter-position').value;
+  const country = document.getElementById('filter-country').value;
+  const price = document.getElementById('filter-price').value;
+  const sort = document.getElementById('filter-sort').value;
 
-    let url = `/api/players?sort_by=${sort}`;
-    if (pos) url += `&position=${pos}`;
-    if (country) url += `&country=${country}`;
-    if (price) url += `&max_price=${price}`;
+  let url = `/api/players?sort_by=${sort}`;
+  if (pos) url += `&position=${pos}`;
+  if (country) url += `&country=${country}`;
+  if (price) url += `&max_price=${price}`;
 
-    const res = await fetch(url);
-    const data = await res.json();
-    if (data.success) {
-        allPlayers = data.players;
-        renderPlayerGrid(allPlayers);
-    }
+  const res = await fetch(url);
+  const data = await res.json();
+  if (data.success) {
+    allPlayers = data.players;
+    renderPlayerGrid(allPlayers);
+  }
 }
 
 async function loadCountries() {
-    const res = await fetch('/api/countries');
-    const data = await res.json();
-    const select = document.getElementById('filter-country');
-    if (data.success) {
-        data.countries.forEach(c => {
-            const opt = document.createElement('option');
-            opt.value = c.id;
-            opt.textContent = c.name;
-            select.appendChild(opt);
-        });
-    }
+  const res = await fetch('/api/countries');
+  const data = await res.json();
+  const select = document.getElementById('filter-country');
+  if (data.success) {
+    data.countries.forEach((c) => {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = c.name;
+      select.appendChild(opt);
+    });
+  }
 }
 
 async function loadExistingTeam() {
-    try {
-        const res = await fetch('/api/team');
-        const data = await res.json();
-        if (data.success && data.team.players.length) {
-            squad = data.team.players.map(ftp => ({
-                ...ftp.player,
-                is_starting: ftp.is_starting,
-                bench_order: ftp.bench_order,
-            }));
-            if (data.team.captain_id) {
-                document.getElementById('captain-select').value = data.team.captain_id;
-            }
-            if (data.team.vice_captain_id) {
-                document.getElementById('vice-select').value = data.team.vice_captain_id;
-            }
-            refresh();
-        }
-    } catch (e) { /* not logged in */ }
+  try {
+    const res = await fetch('/api/team');
+    const data = await res.json();
+    if (data.success && data.team.players.length) {
+      squad = data.team.players.map((ftp) => ({
+        ...ftp.player,
+        is_starting: ftp.is_starting,
+        bench_order: ftp.bench_order,
+      }));
+      if (data.team.captain_id) document.getElementById('captain-select').value = data.team.captain_id;
+      if (data.team.vice_captain_id) document.getElementById('vice-select').value = data.team.vice_captain_id;
+      refresh();
+    }
+  } catch (_) { /* not logged in */ }
 }
 
 document.getElementById('filter-apply').addEventListener('click', loadPlayers);
+document.getElementById('filter-sort').addEventListener('change', loadPlayers);
+document.getElementById('filter-country').addEventListener('change', loadPlayers);
+
+document.querySelectorAll('.pos-chip').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.pos-chip').forEach((b) => {
+      b.classList.remove('bg-primary-container', 'text-on-primary-container');
+      b.classList.add('bg-surface-variant', 'text-on-surface', 'border', 'border-outline-variant');
+    });
+    btn.classList.add('bg-primary-container', 'text-on-primary-container');
+    btn.classList.remove('bg-surface-variant', 'text-on-surface', 'border', 'border-outline-variant');
+    document.getElementById('filter-position').value = btn.dataset.pos || '';
+    loadPlayers();
+  });
+});
+
+let searchTimer;
+document.getElementById('player-search').addEventListener('input', (e) => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    searchQuery = e.target.value;
+    renderPlayerGrid(allPlayers);
+  }, 150);
+});
 
 document.getElementById('save-squad').addEventListener('click', async () => {
-    if (squad.length !== SQUAD_SIZE) {
-        document.getElementById('save-msg').textContent = 'Squad must have exactly 15 players';
-        return;
-    }
-    const payload = {
-        squad: squad.map(p => ({
-            player_id: p.id,
-            is_starting: p.is_starting,
-            bench_order: p.bench_order,
-        })),
-        captain_id: parseInt(document.getElementById('captain-select').value),
-        vice_captain_id: parseInt(document.getElementById('vice-select').value),
-    };
-    const res = await fetch('/api/team/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    const msg = document.getElementById('save-msg');
-    if (data.success) {
-        msg.textContent = 'Squad saved successfully!';
-        msg.className = 'success-msg';
-    } else {
-        msg.textContent = data.message;
-        msg.className = 'error-msg';
-    }
+  if (squad.length !== SQUAD_SIZE) {
+    document.getElementById('save-msg').textContent = 'Squad must have exactly 15 players';
+    document.getElementById('save-msg').className = 'error-msg';
+    return;
+  }
+  const payload = {
+    squad: squad.map((p) => ({
+      player_id: p.id,
+      is_starting: p.is_starting,
+      bench_order: p.bench_order,
+    })),
+    captain_id: parseInt(document.getElementById('captain-select').value, 10),
+    vice_captain_id: parseInt(document.getElementById('vice-select').value, 10),
+  };
+  const res = await fetch('/api/team/save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  const msg = document.getElementById('save-msg');
+  if (data.success) {
+    msg.textContent = 'Squad saved successfully!';
+    msg.className = 'success-msg';
+  } else {
+    msg.textContent = data.message;
+    msg.className = 'error-msg';
+  }
 });
 
 loadCountries();

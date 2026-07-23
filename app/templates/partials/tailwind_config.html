@@ -1,0 +1,129 @@
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet"/>
+<script>
+tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        "primary": "#e5c363",
+        "primary-container": "#c8a84b",
+        "on-primary": "#3d2f00",
+        "on-primary-container": "#4f3d00",
+        "primary-fixed": "#ffe08c",
+        "secondary": "#b4c5ff",
+        "secondary-container": "#0053db",
+        "on-secondary": "#002a78",
+        "tertiary": "#4edea3",
+        "tertiary-container": "#26c289",
+        "on-tertiary": "#003824",
+        "background": "#0f131f",
+        "on-background": "#dfe2f3",
+        "surface": "#111827",
+        "surface-dim": "#0f131f",
+        "surface-bright": "#353946",
+        "surface-container-lowest": "#0a0e1a",
+        "surface-container-low": "#171b28",
+        "surface-container": "#1b1f2c",
+        "surface-container-high": "#262a37",
+        "surface-container-highest": "#313442",
+        "surface-elevated": "#1C2333",
+        "surface-variant": "#313442",
+        "on-surface": "#dfe2f3",
+        "on-surface-variant": "#d0c5b2",
+        "outline": "#98907e",
+        "outline-variant": "#4d4637",
+        "text-primary": "#F9FAFB",
+        "text-secondary": "#9CA3AF",
+        "danger": "#EF4444",
+        "pitch-green": "#00AD4A",
+        "neon-cyan": "#05F0FF",
+        "error": "#ffb4ab",
+      },
+      borderRadius: {
+        DEFAULT: "0.25rem",
+        lg: "0.5rem",
+        xl: "0.75rem",
+        "2xl": "1rem",
+        full: "9999px",
+      },
+      spacing: {
+        gutter: "16px",
+        sm: "8px",
+        md: "16px",
+        lg: "24px",
+        xl: "32px",
+        "2xl": "48px",
+        "margin-mobile": "16px",
+        "margin-desktop": "40px",
+        xs: "4px",
+        base: "4px",
+      },
+      fontFamily: {
+        "display-lg": ["Bebas Neue", "sans-serif"],
+        "headline-lg": ["Bebas Neue", "sans-serif"],
+        "headline-md": ["Bebas Neue", "sans-serif"],
+        "headline-lg-mobile": ["Bebas Neue", "sans-serif"],
+        "body-lg": ["Inter", "sans-serif"],
+        "body-md": ["Inter", "sans-serif"],
+        "body-sm": ["Inter", "sans-serif"],
+        "label-caps": ["Inter", "sans-serif"],
+        "stat-lg": ["JetBrains Mono", "monospace"],
+        "stat-md": ["JetBrains Mono", "monospace"],
+      },
+      fontSize: {
+        "headline-lg-mobile": ["24px", { lineHeight: "24px", fontWeight: "400" }],
+        "stat-md": ["14px", { lineHeight: "14px", fontWeight: "500" }],
+        "headline-lg": ["32px", { lineHeight: "32px", letterSpacing: "0.02em", fontWeight: "400" }],
+        "body-md": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+        "headline-md": ["24px", { lineHeight: "24px", letterSpacing: "0.03em", fontWeight: "400" }],
+        "body-lg": ["18px", { lineHeight: "28px", fontWeight: "400" }],
+        "stat-lg": ["20px", { lineHeight: "20px", fontWeight: "700" }],
+        "body-sm": ["14px", { lineHeight: "20px", fontWeight: "400" }],
+        "label-caps": ["12px", { lineHeight: "16px", letterSpacing: "0.05em", fontWeight: "700" }],
+        "display-lg": ["64px", { lineHeight: "60px", letterSpacing: "0.02em", fontWeight: "400" }],
+      },
+    },
+  },
+};
+</script>
+<style>
+  body { background-color: #0A0E1A; color: #F9FAFB; }
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    vertical-align: middle;
+  }
+  .material-symbols-outlined.filled {
+    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+  .glow-primary { box-shadow: 0 0 12px 0 rgba(37, 99, 235, 0.3); }
+  .glow-gold { box-shadow: inset 0 10px 20px -10px rgba(200, 168, 75, 0.5); }
+  .gold-glow { box-shadow: 0 0 20px 2px rgba(200, 168, 75, 0.2); }
+  .input-focus-glow:focus-within {
+    box-shadow: 0 0 12px rgba(200, 168, 75, 0.4);
+    border-color: #c8a84b;
+  }
+  .glow-input:focus {
+    box-shadow: 0 0 12px rgba(200, 168, 75, 0.4);
+    border-color: #c8a84b;
+    outline: none;
+  }
+  .pitch-bg {
+    background: linear-gradient(180deg, rgba(9, 27, 63, 0.85) 0%, rgba(0, 173, 74, 0.75) 100%);
+  }
+  .pitch-pattern {
+    background: linear-gradient(180deg, rgba(9, 27, 63, 0.1) 0%, rgba(0, 173, 74, 0.15) 100%);
+  }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  .nation-card.selected {
+    border-color: #c8a84b;
+    box-shadow: 0 0 15px rgba(200, 168, 75, 0.5), inset 0 0 20px rgba(200, 168, 75, 0.2);
+    background-color: #1C2333;
+  }
+  .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+  .custom-scrollbar::-webkit-scrollbar-track { background: #0a0e1a; }
+  .custom-scrollbar::-webkit-scrollbar-thumb { background: #4d4637; border-radius: 4px; }
+</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pulse.css') }}">
