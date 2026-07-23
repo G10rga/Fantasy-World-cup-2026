@@ -188,23 +188,24 @@ def _af_team_payload(entry: dict) -> dict:
     return entry
 
 
-def _thesportsdb_photo(player_name: str, nationality: str | None = None) -> str | None:
-    """Fetch a soccer player cutout/thumb from TheSportsDB (free, no API key)."""
+def _thesportsdb_search_raw(query: str) -> list:
     try:
         response = requests.get(
             THESPORTSDB_SEARCH,
-            params={"p": player_name},
+            params={"p": query},
             headers={"User-Agent": "wc2026-fantasy/1.0"},
             timeout=20,
         )
         if response.status_code >= 400:
-            logger.warning("TheSportsDB HTTP %s for %s", response.status_code, player_name)
-            return None
-        rows = (response.json() or {}).get("player") or []
+            logger.warning("TheSportsDB HTTP %s for %s", response.status_code, query)
+            return []
+        return (response.json() or {}).get("player") or []
     except Exception as exc:
-        logger.warning("TheSportsDB lookup failed for %s: %s", player_name, exc)
-        return None
+        logger.warning("TheSportsDB lookup failed for %s: %s", query, exc)
+        return []
 
+
+def _pick_tsdb_photo(rows: list, player_name: str, nationality: str | None, *, strict: bool = False) -> str | None:
     nationality_l = (nationality or "").strip().lower()
     exact = []
     soft = []
@@ -216,24 +217,64 @@ def _thesportsdb_photo(player_name: str, nationality: str | None = None) -> str 
             continue
         row_name = (row.get("strPlayer") or "").strip()
         row_nat = (row.get("strNationality") or "").strip().lower()
-        if nationality_l and row_nat and nationality_l not in row_nat and row_nat not in nationality_l:
-            soft.append(photo)
-            continue
+        nat_ok = (not nationality_l) or (not row_nat) or nationality_l in row_nat or row_nat in nationality_l
         if _player_names_match(player_name, row_name):
-            exact.append(photo)
-        else:
+            if nat_ok:
+                exact.append(photo)
+            else:
+                soft.append(photo)
+        elif nat_ok and not strict:
             soft.append(photo)
     return (exact or soft or [None])[0]
 
 
-def ensure_player_photos(players: list, *, limit: int = 20) -> int:
+def _thesportsdb_photo(player_name: str, nationality: str | None = None) -> str | None:
+    """Fetch a soccer player cutout/thumb from TheSportsDB (free, no API key)."""
+    name = (player_name or "").strip()
+    if not name:
+        return None
+
+    parts = name.split()
+    queries = [name]
+    if len(parts) >= 2:
+        last = parts[-1]
+        first = parts[0]
+        queries.extend([
+            last,
+            f"{first} {last}",
+            f"{first[0]} {last}",
+            f"{last} {first}",
+        ])
+
+    tried = set()
+    for i, query in enumerate(queries):
+        key = query.lower()
+        if key in tried or len(query) < 3:
+            continue
+        tried.add(key)
+        rows = _thesportsdb_search_raw(query)
+        # Last-name-only searches must match more carefully to avoid wrong faces
+        strict = query.lower() == (parts[-1].lower() if parts else "")
+        photo = _pick_tsdb_photo(rows, name, nationality, strict=strict)
+        if photo:
+            return photo
+        if i < len(queries) - 1:
+            time.sleep(0.12)
+    return None
+
+
+def ensure_player_photos(players: list, *, limit: int = 20, retry_failed: bool = False) -> int:
     """Fetch and store headshots for specific players (used by API on demand)."""
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
     # Resolve relationships here (app context) before handing work to threads
     todo: list[tuple[Player, str | None]] = []
     for player in players:
-        if player is None or player.photo_url is not None:
+        if player is None:
+            continue
+        if player.photo_url:  # real URL already
+            continue
+        if player.photo_url == "" and not retry_failed:
             continue
         nation = player.country.name if player.country else None
         todo.append((player, nation))
@@ -295,18 +336,26 @@ def _find_player_loose(api_player_id: int, player_name: str, country_id: int, po
     return None
 
 
-def sync_player_photos(*, force: bool = False, batch_size: int = 60) -> dict:
+def sync_player_photos(*, force: bool = False, batch_size: int = 60, retry_failed: bool = False) -> dict:
     """Attach real player headshots.
 
     Prefer TheSportsDB cutouts (no key required). Also try API-Football squads when
     API_FOOTBALL_KEY is configured. Processes up to ``batch_size`` missing photos
     per call so boot/scheduler can finish gradually.
+
+    ``photo_url is None`` = not tried yet.
+    ``photo_url == ""`` = tried, no match found.
+    non-empty ``photo_url`` = real headshot URL.
     """
     query = Player.query
-    if not force:
+    if force:
+        pass
+    elif retry_failed:
+        query = query.filter(Player.photo_url == "")
+    else:
         query = query.filter(Player.photo_url.is_(None))
     missing_players = query.order_by(Player.id.asc()).limit(batch_size).all()
-    remaining_before = Player.query.filter(Player.photo_url.is_(None)).count()
+    remaining_before = query.count()
 
     updated = 0
     tsdb_hits = 0
@@ -334,14 +383,15 @@ def sync_player_photos(*, force: bool = False, batch_size: int = 60) -> dict:
         quota = ApiFootballClient.get_quota_usage()
         if quota["remaining"] >= 10:
             # Resolve national team per country that still needs photos
-            countries = (
+            photo_missing = (Player.photo_url.is_(None)) | (Player.photo_url == "")
+            countries_q = (
                 db.session.query(Country)
                 .join(Player, Player.country_id == Country.id)
-                .filter(Player.photo_url.is_(None) if not force else True)
                 .distinct()
-                .limit(20)
-                .all()
             )
+            if not force:
+                countries_q = countries_q.filter(photo_missing)
+            countries = countries_q.limit(20).all()
             for country in countries:
                 data = af._get(
                     "teams",
@@ -383,16 +433,22 @@ def sync_player_photos(*, force: bool = False, batch_size: int = 60) -> dict:
                         af_hits += 1
                 db.session.commit()
 
-    remaining = Player.query.filter(Player.photo_url.is_(None)).count()
+    remaining_untried = Player.query.filter(Player.photo_url.is_(None)).count()
+    no_match = Player.query.filter(Player.photo_url == "").count()
+    with_photo = Player.query.filter(Player.photo_url.isnot(None), Player.photo_url != "").count()
     return {
         "updated": updated,
         "thesportsdb": tsdb_hits,
         "api_football": af_hits,
         "linked": linked,
         "teams_matched": teams_matched,
-        "remaining": remaining,
+        "remaining_untried": remaining_untried,
+        "remaining": remaining_untried,  # back-compat for older log readers
+        "no_match": no_match,
+        "with_photo": with_photo,
         "remaining_before": remaining_before,
         "batch_size": batch_size,
+        "retry_failed": retry_failed,
     }
 
 

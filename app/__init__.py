@@ -134,19 +134,28 @@ def create_app(config_name=None):
                     else:
                         print("AUTO_SYNC: skipped (players already present)", flush=True)
 
-                    missing_photos = Player.query.filter(Player.photo_url.is_(None)).count()
-                    if missing_photos > 0:
-                        print(f"AUTO_SYNC: starting background photo sync ({missing_photos} missing)…", flush=True)
+                    # Always (re)scan for better coverage: untried first, then retry empty matches
+                    untried = Player.query.filter(Player.photo_url.is_(None)).count()
+                    no_match = Player.query.filter(Player.photo_url == "").count()
+                    with_photo = Player.query.filter(
+                        Player.photo_url.isnot(None), Player.photo_url != ""
+                    ).count()
+                    if untried > 0 or no_match > 0:
+                        print(
+                            f"AUTO_SYNC: starting photo sync "
+                            f"(have={with_photo}, untried={untried}, no_match={no_match})…",
+                            flush=True,
+                        )
 
                         def _photo_worker(app):
                             with app.app_context():
                                 from app.data.sync import sync_player_photos
                                 from app.models import Player as Pl
 
-                                for _ in range(40):
+                                # Pass 1: never-tried (NULL)
+                                for _ in range(50):
                                     left = Pl.query.filter(Pl.photo_url.is_(None)).count()
                                     if left == 0:
-                                        print("AUTO_SYNC: photos complete", flush=True)
                                         break
                                     try:
                                         result = sync_player_photos(batch_size=40)
@@ -154,7 +163,30 @@ def create_app(config_name=None):
                                     except Exception as photo_exc:
                                         print(f"AUTO_SYNC: photo batch failed: {photo_exc}", flush=True)
                                         break
-                                    time.sleep(2)
+                                    time.sleep(1)
+
+                                # Pass 2: retry "" with improved name matching
+                                for _ in range(50):
+                                    left = Pl.query.filter(Pl.photo_url == "").count()
+                                    if left == 0:
+                                        break
+                                    try:
+                                        result = sync_player_photos(batch_size=30, retry_failed=True)
+                                        print(f"AUTO_SYNC: photos retry {result}", flush=True)
+                                    except Exception as photo_exc:
+                                        print(f"AUTO_SYNC: photo retry failed: {photo_exc}", flush=True)
+                                        break
+                                    time.sleep(1)
+
+                                have = Pl.query.filter(
+                                    Pl.photo_url.isnot(None), Pl.photo_url != ""
+                                ).count()
+                                miss = Pl.query.filter(Pl.photo_url == "").count()
+                                print(
+                                    f"AUTO_SYNC: photo scan finished — {have} with photos, "
+                                    f"{miss} still no match",
+                                    flush=True,
+                                )
 
                         threading.Thread(
                             target=_photo_worker,

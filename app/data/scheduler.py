@@ -40,11 +40,15 @@ def sync_player_photos_job():
     from app.models import Player
 
     try:
-        missing = Player.query.filter(Player.photo_url.is_(None)).count()
-        if missing == 0:
+        untried = Player.query.filter(Player.photo_url.is_(None)).count()
+        if untried > 0:
+            result = sync_player_photos(batch_size=50)
+            logger.info("Player photos sync: %s", result)
             return
-        result = sync_player_photos(batch_size=50)
-        logger.info("Player photos sync: %s", result)
+        no_match = Player.query.filter(Player.photo_url == "").count()
+        if no_match > 0:
+            result = sync_player_photos(batch_size=40, retry_failed=True)
+            logger.info("Player photos retry: %s", result)
     except Exception as exc:
         logger.error("Player photos sync failed: %s", exc)
 

@@ -232,7 +232,7 @@ def get_team():
     try:
         from app.data.sync import ensure_player_photos
         roster = [ftp.player for ftp in team.squad_players if ftp.player]
-        ensure_player_photos(roster, limit=15)
+        ensure_player_photos(roster, limit=15, retry_failed=True)
         db.session.refresh(team)
     except Exception:
         current_app.logger.exception("ensure_player_photos failed for team")
