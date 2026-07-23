@@ -22,8 +22,8 @@
 
   async function checkAuth() {
     try {
-      const res = await fetch('/api/auth/me');
-      const data = await res.json();
+      const res = await fetch('/api/auth/me', { credentials: 'same-origin' });
+      const data = await res.json().catch(() => ({ success: false }));
       if (data.success) {
         const u = data.user;
         const label = `${u.username} · ${u.total_points} pts`;
@@ -49,8 +49,8 @@
 
   async function loadBudgetHeader() {
     try {
-      const res = await fetch('/api/transfers/budget');
-      const data = await res.json();
+      const res = await fetch('/api/transfers/budget', { credentials: 'same-origin' });
+      const data = await res.json().catch(() => ({ success: false }));
       if (!data.success) return;
       const limit = data.budget_limit ?? 100;
       const remaining = data.budget_remaining;

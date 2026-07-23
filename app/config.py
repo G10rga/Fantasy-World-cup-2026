@@ -6,10 +6,14 @@ class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key-change-in-production")
     SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL", "sqlite:///wc2026_fantasy.db")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    # SQLite needs connect timeout; Postgres pool options differ — applied in create_app if needed
     SQLALCHEMY_ENGINE_OPTIONS = {
         "pool_pre_ping": True,
-        "connect_args": {"timeout": 30},
     }
+    TRUST_PROXY = os.environ.get("TRUST_PROXY", "0") in ("1", "true", "True", "yes")
+    WTF_CSRF_ENABLED = False  # API uses JSON + session cookies; forms validate via WTForms without CSRF tokens
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
 
     FOOTBALL_DATA_TOKEN = os.environ.get("FOOTBALL_DATA_TOKEN", "")
     API_FOOTBALL_KEY = os.environ.get("API_FOOTBALL_KEY", "")
@@ -112,6 +116,14 @@ class DevelopmentConfig(Config):
 class ProductionConfig(Config):
     DEBUG = False
     TESTING = False
+    # Behind HTTPS reverse proxies (Render, Railway, Heroku, etc.)
+    TRUST_PROXY = os.environ.get("TRUST_PROXY", "1") in ("1", "true", "True", "yes")
+    SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", "1") in ("1", "true", "True", "yes")
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = os.environ.get("SESSION_COOKIE_SAMESITE", "Lax")
+    REMEMBER_COOKIE_SECURE = SESSION_COOKIE_SECURE
+    REMEMBER_COOKIE_HTTPONLY = True
+    REMEMBER_COOKIE_SAMESITE = SESSION_COOKIE_SAMESITE
 
 
 class TestingConfig(Config):

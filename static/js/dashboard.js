@@ -120,15 +120,15 @@ function posLabel(pos) {
 async function loadTeamKpis() {
   try {
     const [meRes, teamRes, liveRes, budgetRes] = await Promise.all([
-      fetch('/api/auth/me'),
-      fetch('/api/team'),
-      fetch('/api/live/points'),
-      fetch('/api/transfers/budget'),
+      fetch('/api/auth/me', { credentials: 'same-origin' }),
+      fetch('/api/team', { credentials: 'same-origin' }),
+      fetch('/api/live/points', { credentials: 'same-origin' }),
+      fetch('/api/transfers/budget', { credentials: 'same-origin' }),
     ]);
-    const me = await meRes.json();
-    const team = await teamRes.json();
-    const live = await liveRes.json();
-    const budget = await budgetRes.json();
+    const me = await meRes.json().catch(() => ({ success: false }));
+    const team = await teamRes.json().catch(() => ({ success: false }));
+    const live = await liveRes.json().catch(() => ({ success: false }));
+    const budget = await budgetRes.json().catch(() => ({ success: false }));
 
     if (me.success) {
       document.getElementById('kpi-points').textContent = me.user.total_points ?? 0;
@@ -166,16 +166,16 @@ async function loadTeamKpis() {
 async function loadLeagueWidget() {
   const box = document.getElementById('league-standings');
   try {
-    const res = await fetch('/api/leagues');
-    const data = await res.json();
+    const res = await fetch('/api/leagues', { credentials: 'same-origin' });
+    const data = await res.json().catch(() => ({ success: false }));
     if (!data.success || !data.leagues?.length) {
       box.innerHTML = '<div class="p-6 text-center text-on-surface-variant font-body-sm">Join or create a mini league to see standings here.</div>';
       return;
     }
     const league = data.leagues[0];
     document.getElementById('league-widget-title').textContent = league.name;
-    const stRes = await fetch(`/api/leagues/${league.id}/standings`);
-    const st = await stRes.json();
+    const stRes = await fetch(`/api/leagues/${league.id}/standings`, { credentials: 'same-origin' });
+    const st = await stRes.json().catch(() => ({ standings: [] }));
     const rows = (st.standings || []).slice(0, 5);
     if (!rows.length) {
       box.innerHTML = '<div class="p-6 text-center text-on-surface-variant font-body-sm">No standings yet</div>';

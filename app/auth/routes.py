@@ -35,11 +35,16 @@ def register_page():
 @auth_bp.route("/api/auth/register", methods=["POST"])
 def register():
     data = request.get_json(silent=True) or {}
+    # JSON null for optional int must not reach IntegerField raw processing.
+    if data.get("supported_nation_id") in (None, "", "null", "undefined"):
+        data.pop("supported_nation_id", None)
+
     form = RegisterForm(data=data, meta={"csrf": False})
 
     if not form.validate():
-        errors = {k: v[0] for k, v in form.errors.items()}
-        return _json_error("VALIDATION_ERROR", "Invalid registration data", errors)
+        errors = {k: (v[0] if isinstance(v, (list, tuple)) else v) for k, v in form.errors.items()}
+        message = next(iter(errors.values()), "Invalid registration data")
+        return _json_error("VALIDATION_ERROR", message, errors)
 
     if User.query.filter_by(email=form.email.data.lower()).first():
         return _json_error("EMAIL_EXISTS", "Email already registered")
@@ -75,7 +80,9 @@ def login():
     form = LoginForm(data=data, meta={"csrf": False})
 
     if not form.validate():
-        return _json_error("VALIDATION_ERROR", "Invalid login data", form.errors)
+        errors = {k: (v[0] if isinstance(v, (list, tuple)) else v) for k, v in form.errors.items()}
+        message = next(iter(errors.values()), "Invalid login data")
+        return _json_error("VALIDATION_ERROR", message, errors)
 
     user = User.query.filter_by(email=form.email.data.lower()).first()
     if not user or not user.check_password(form.password.data):

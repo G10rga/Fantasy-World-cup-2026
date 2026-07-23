@@ -1,7 +1,7 @@
 async function loadBudgetInfo() {
     const el = document.getElementById('transfer-budget-info');
-    const res = await fetch('/api/transfers/budget');
-    const data = await res.json();
+    const res = await fetch('/api/transfers/budget', { credentials: 'same-origin' });
+    const data = await res.json().catch(() => ({ success: false }));
     if (!data.success) {
         el.innerHTML = 'Please <a class="text-primary underline" href="/login">login</a> to manage transfers.';
         return;

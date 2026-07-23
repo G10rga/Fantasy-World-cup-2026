@@ -75,25 +75,37 @@ document.getElementById('toggle-pw')?.addEventListener('click', () => {
 document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = e.target.querySelector('button[type=submit]');
+    const err = document.getElementById('error-msg');
+    err.textContent = '';
     btn.disabled = true;
     try {
         const res = await fetch('/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
             body: JSON.stringify({
-                email: document.getElementById('email').value,
+                email: document.getElementById('email').value.trim(),
                 password: document.getElementById('password').value,
             }),
         });
-        const data = await res.json();
+        let data = {};
+        try { data = await res.json(); } catch (_) {
+            err.textContent = 'Server error. Please try again.';
+            btn.disabled = false;
+            return;
+        }
         if (data.success) {
             window.location.href = '/';
         } else {
-            document.getElementById('error-msg').textContent = data.message;
+            err.textContent = data.message || 'Login failed';
+            if (data.details) {
+                const first = Object.values(data.details)[0];
+                if (first) err.textContent = Array.isArray(first) ? first[0] : first;
+            }
             btn.disabled = false;
         }
     } catch {
-        document.getElementById('error-msg').textContent = 'Network error. Try again.';
+        err.textContent = 'Network error. Try again.';
         btn.disabled = false;
     }
 });

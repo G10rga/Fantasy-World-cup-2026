@@ -16,8 +16,8 @@
 
 <script>
 async function loadPoints() {
-    const res = await fetch('/api/team/points');
-    const data = await res.json();
+    const res = await fetch('/api/team/points', { credentials: 'same-origin' });
+    const data = await res.json().catch(() => ({ success: false }));
     const container = document.getElementById('points-breakdown');
     if (!data.success) {
         container.innerHTML = `

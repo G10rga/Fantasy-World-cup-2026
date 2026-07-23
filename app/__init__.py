@@ -1,10 +1,11 @@
 import click
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, redirect, render_template, request, url_for
 from flask_caching import Cache
 from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from dotenv import load_dotenv
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 load_dotenv()
 
@@ -25,10 +26,35 @@ def create_app(config_name=None):
     app = Flask(__name__, static_folder="../static", template_folder="templates")
     app.config.from_object(config_by_name[config_name])
 
+    # Heroku / Render style postgres URLs
+    db_url = app.config.get("SQLALCHEMY_DATABASE_URI") or ""
+    if db_url.startswith("postgres://"):
+        db_url = db_url.replace("postgres://", "postgresql://", 1)
+        app.config["SQLALCHEMY_DATABASE_URI"] = db_url
+
+    engine_opts = dict(app.config.get("SQLALCHEMY_ENGINE_OPTIONS") or {})
+    if db_url.startswith("sqlite"):
+        engine_opts["connect_args"] = {"timeout": 30}
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = engine_opts
+
+    if app.config.get("TRUST_PROXY"):
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
     login_manager.login_view = "auth.login_page"
+
+    @login_manager.unauthorized_handler
+    def unauthorized():
+        # API clients must get JSON 401 — HTML redirects break fetch().json()
+        if request.path.startswith("/api/") or _wants_json():
+            return jsonify({
+                "success": False,
+                "error": "NOT_AUTHENTICATED",
+                "message": "Login required",
+            }), 401
+        return redirect(url_for(login_manager.login_view, next=request.path))
 
     cache_config = {
         "CACHE_TYPE": app.config.get("CACHE_TYPE", "SimpleCache"),

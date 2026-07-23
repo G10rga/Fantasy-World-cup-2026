@@ -157,34 +157,49 @@ document.getElementById('nation-search').addEventListener('input', (e) => render
 document.getElementById('register-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = e.target.querySelector('button[type=submit]');
+    const err = document.getElementById('error-msg');
+    err.textContent = '';
     const pw = document.getElementById('password').value;
     const pwc = document.getElementById('password_confirm').value;
     if (pw !== pwc) {
-        document.getElementById('error-msg').textContent = 'Passwords do not match.';
+        err.textContent = 'Passwords do not match.';
         return;
     }
     btn.disabled = true;
+    const payload = {
+        email: document.getElementById('email').value.trim(),
+        username: document.getElementById('username').value.trim(),
+        password: pw,
+        password_confirm: pwc,
+    };
+    if (selectedNationId) {
+        payload.supported_nation_id = selectedNationId;
+    }
     try {
         const res = await fetch('/api/auth/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                email: document.getElementById('email').value,
-                username: document.getElementById('username').value,
-                password: pw,
-                password_confirm: pwc,
-                supported_nation_id: selectedNationId,
-            }),
+            credentials: 'same-origin',
+            body: JSON.stringify(payload),
         });
-        const data = await res.json();
+        let data = {};
+        try { data = await res.json(); } catch (_) {
+            err.textContent = 'Server error. Please try again.';
+            btn.disabled = false;
+            return;
+        }
         if (data.success) {
             window.location.href = '/squad';
         } else {
-            document.getElementById('error-msg').textContent = data.message;
+            err.textContent = data.message || 'Registration failed';
+            if (data.details) {
+                const first = Object.values(data.details)[0];
+                if (first) err.textContent = Array.isArray(first) ? first[0] : first;
+            }
             btn.disabled = false;
         }
     } catch {
-        document.getElementById('error-msg').textContent = 'Network error. Try again.';
+        err.textContent = 'Network error. Try again.';
         btn.disabled = false;
     }
 });

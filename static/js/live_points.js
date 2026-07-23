@@ -142,8 +142,8 @@ async function setCaptain(captainId, viceId) {
 }
 
 async function loadTeam() {
-  const res = await fetch('/api/team');
-  const data = await res.json();
+  const res = await fetch('/api/team', { credentials: 'same-origin' });
+  const data = await res.json().catch(() => ({ success: false }));
   if (!data.success) {
     document.querySelector('.max-w-7xl').innerHTML =
       '<div class="text-center py-20 text-on-surface-variant">Please <a class="text-primary underline" href="/login">login</a> to view your team.</div>';
@@ -207,57 +207,65 @@ async function loadBoosters() {
 }
 
 async function refreshLivePoints() {
-  const res = await fetch('/api/live/points');
-  const data = await res.json();
+  try {
+    const res = await fetch('/api/live/points', { credentials: 'same-origin' });
+    const data = await res.json().catch(() => ({ success: false }));
 
-  const team = await loadTeam();
-  if (!team) return;
-  currentTeam = team;
-  document.getElementById('team-status')?.classList.remove('hidden');
+    const team = await loadTeam();
+    if (!team) return;
+    currentTeam = team;
+    document.getElementById('team-status')?.classList.remove('hidden');
 
-  pointsMap = {};
-  if (data.success) {
-    document.getElementById('md-points').textContent = data.total_points;
-    const liveBadge = document.getElementById('live-indicator');
-    if (data.is_live) {
-      liveBadge.classList.remove('hidden');
-      liveBadge.classList.add('flex');
-    } else {
-      liveBadge.classList.add('hidden');
-      liveBadge.classList.remove('flex');
+    pointsMap = {};
+    if (data.success) {
+      document.getElementById('md-points').textContent = data.total_points;
+      const liveBadge = document.getElementById('live-indicator');
+      if (data.is_live) {
+        liveBadge.classList.remove('hidden');
+        liveBadge.classList.add('flex');
+      } else {
+        liveBadge.classList.add('hidden');
+        liveBadge.classList.remove('flex');
+      }
+      data.players.forEach((p) => { pointsMap[p.player_id] = p; });
+    } else if (res.status === 401) {
+      document.querySelector('.max-w-7xl').innerHTML =
+        '<div class="text-center py-20 text-on-surface-variant">Please <a class="text-primary underline" href="/login">login</a> to view your team.</div>';
+      return;
     }
-    data.players.forEach((p) => { pointsMap[p.player_id] = p; });
-  }
 
-  const prices = team.players.map((p) => p.player?.price || 0);
-  const avg = prices.length ? prices.reduce((a, b) => a + b, 0) / prices.length : 0;
-  document.getElementById('avg-value').textContent = `$${avg.toFixed(1)}m`;
+    const prices = team.players.map((p) => p.player?.price || 0);
+    const avg = prices.length ? prices.reduce((a, b) => a + b, 0) / prices.length : 0;
+    document.getElementById('avg-value').textContent = `$${avg.toFixed(1)}m`;
 
-  renderPitch(team);
-  renderBench(team);
+    renderPitch(team);
+    renderBench(team);
 
-  const captain = team.players.find((p) => p.player_id === team.captain_id);
-  const vice = team.players.find((p) => p.player_id === team.vice_captain_id);
-  document.getElementById('captain-widget').innerHTML = `
+    const captain = team.players.find((p) => p.player_id === team.captain_id);
+    const vice = team.players.find((p) => p.player_id === team.vice_captain_id);
+    document.getElementById('captain-widget').innerHTML = `
     <p class="mb-1">Captain: <strong class="text-primary">${captain?.player?.name || '—'}</strong></p>
     <p class="mb-3">Vice: <strong class="text-on-surface">${vice?.player?.name || '—'}</strong></p>
     <button type="button" class="w-full border border-primary text-primary font-label-caps text-label-caps py-2 rounded-lg hover:bg-primary/10" id="change-captain-btn">Change Captain</button>
   `;
-  document.getElementById('change-captain-btn')?.addEventListener('click', openCaptainModal);
+    document.getElementById('change-captain-btn')?.addEventListener('click', openCaptainModal);
 
-  if (data.success) {
-    document.getElementById('live-points-list').innerHTML = data.players
-      .filter((p) => p.is_starting)
-      .sort((a, b) => b.matchday_points - a.matchday_points)
-      .map((p) => {
-        const extras = [];
-        if (p.minutes_played > 0) extras.push(`${p.minutes_played}'`);
-        if (p.goals > 0) extras.push(`${p.goals}G`);
-        if (p.assists > 0) extras.push(`${p.assists}A`);
-        const statStr = extras.length ? ` · ${extras.join(', ')}` : '';
-        return `<li class="flex justify-between gap-2"><span class="truncate">${p.name}</span><span class="font-stat-md text-primary flex-shrink-0">${p.matchday_points}pts${p.multiplier > 1 ? ` (${p.multiplier}x)` : ''}</span></li><li class="text-[11px] text-on-surface-variant -mt-1 mb-1">${p.position}${statStr}</li>`;
-      })
-      .join('') || '<li>No live data</li>';
+    if (data.success) {
+      document.getElementById('live-points-list').innerHTML = data.players
+        .filter((p) => p.is_starting)
+        .sort((a, b) => b.matchday_points - a.matchday_points)
+        .map((p) => {
+          const extras = [];
+          if (p.minutes_played > 0) extras.push(`${p.minutes_played}'`);
+          if (p.goals > 0) extras.push(`${p.goals}G`);
+          if (p.assists > 0) extras.push(`${p.assists}A`);
+          const statStr = extras.length ? ` · ${extras.join(', ')}` : '';
+          return `<li class="flex justify-between gap-2"><span class="truncate">${p.name}</span><span class="font-stat-md text-primary flex-shrink-0">${p.matchday_points}pts${p.multiplier > 1 ? ` (${p.multiplier}x)` : ''}</span></li><li class="text-[11px] text-on-surface-variant -mt-1 mb-1">${p.position}${statStr}</li>`;
+        })
+        .join('') || '<li>No live data</li>';
+    }
+  } catch (e) {
+    console.error('refreshLivePoints', e);
   }
 }
 

@@ -260,9 +260,28 @@ document.getElementById('player-search').addEventListener('input', (e) => {
 });
 
 document.getElementById('save-squad').addEventListener('click', async () => {
+  const msg = document.getElementById('save-msg');
   if (squad.length !== SQUAD_SIZE) {
-    document.getElementById('save-msg').textContent = 'Squad must have exactly 15 players';
-    document.getElementById('save-msg').className = 'error-msg';
+    msg.textContent = 'Squad must have exactly 15 players';
+    msg.className = 'error-msg';
+    return;
+  }
+  const starters = squad.filter((p) => p.is_starting);
+  if (starters.length !== STARTING_XI) {
+    msg.textContent = `Starting XI must have exactly ${STARTING_XI} players (currently ${starters.length})`;
+    msg.className = 'error-msg';
+    return;
+  }
+  const captainId = parseInt(document.getElementById('captain-select').value, 10);
+  const viceId = parseInt(document.getElementById('vice-select').value, 10);
+  if (!captainId || !viceId) {
+    msg.textContent = 'Select a captain and vice captain';
+    msg.className = 'error-msg';
+    return;
+  }
+  if (captainId === viceId) {
+    msg.textContent = 'Captain and vice captain must be different players';
+    msg.className = 'error-msg';
     return;
   }
   const payload = {
@@ -271,21 +290,26 @@ document.getElementById('save-squad').addEventListener('click', async () => {
       is_starting: p.is_starting,
       bench_order: p.bench_order,
     })),
-    captain_id: parseInt(document.getElementById('captain-select').value, 10),
-    vice_captain_id: parseInt(document.getElementById('vice-select').value, 10),
+    captain_id: captainId,
+    vice_captain_id: viceId,
   };
-  const res = await fetch('/api/team/save', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  const data = await res.json();
-  const msg = document.getElementById('save-msg');
-  if (data.success) {
-    msg.textContent = 'Squad saved successfully!';
-    msg.className = 'success-msg';
-  } else {
-    msg.textContent = data.message;
+  try {
+    const res = await fetch('/api/team/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({ success: false, message: 'Server error' }));
+    if (data.success) {
+      msg.textContent = 'Squad saved successfully!';
+      msg.className = 'success-msg';
+    } else {
+      msg.textContent = data.message || (res.status === 401 ? 'Please log in first' : 'Save failed');
+      msg.className = 'error-msg';
+    }
+  } catch (_) {
+    msg.textContent = 'Network error';
     msg.className = 'error-msg';
   }
 });
