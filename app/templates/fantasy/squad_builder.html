@@ -19,8 +19,8 @@
     <!-- Pitch panel -->
     <section class="w-full lg:w-[42%] bg-surface-container-low border-r border-outline-variant flex flex-col relative shrink-0 overflow-hidden">
         <div class="absolute inset-0 pitch-pattern opacity-80 pointer-events-none"></div>
-        <div class="relative z-10 p-4 flex items-center justify-between border-b border-outline-variant/50 bg-surface-container-low/80 shrink-0">
-            <div>
+        <div class="relative z-10 p-4 flex items-center justify-between border-b border-outline-variant/50 bg-surface-container-low/80 shrink-0 gap-3">
+            <div class="min-w-0">
                 <h2 class="font-headline-md text-headline-md uppercase text-on-surface">Your Squad</h2>
                 <p class="font-stat-md text-stat-md text-on-surface-variant mt-1">
                     <span id="squad-count">0 / 15</span>
@@ -28,11 +28,25 @@
                     Rem <span id="budget-remaining" class="text-primary">$100.0m</span>
                 </p>
             </div>
-            <button id="save-squad" class="bg-primary-container text-on-primary-container font-label-caps text-label-caps px-4 py-2 rounded-lg font-bold hover:brightness-110 transition-all">
+            <button id="save-squad" class="shrink-0 bg-primary-container text-on-primary-container font-label-caps text-label-caps px-4 py-2 rounded-lg font-bold hover:brightness-110 transition-all">
                 SAVE
             </button>
         </div>
-        <div id="pitch-view" class="relative z-10 flex-none lg:flex-1 min-h-0 px-3 py-4 flex flex-col justify-center items-center gap-3 sm:gap-4"></div>
+        <div class="relative z-10 px-4 py-2 border-b border-outline-variant/40 bg-surface-container-low/60 shrink-0 space-y-2">
+            <div class="flex items-center justify-between gap-2 flex-wrap">
+                <p id="build-phase" class="font-label-caps text-[10px] tracking-wider text-primary">STEP 1 · STARTING XI 0/11</p>
+                <div class="flex gap-1 flex-wrap" id="formation-pills">
+                    <button type="button" data-f="4-3-3" class="formation-btn px-2 py-1 rounded text-[10px] font-stat-md bg-primary-container text-on-primary-container">4-3-3</button>
+                    <button type="button" data-f="4-4-2" class="formation-btn px-2 py-1 rounded text-[10px] font-stat-md bg-surface-variant text-on-surface-variant">4-4-2</button>
+                    <button type="button" data-f="3-5-2" class="formation-btn px-2 py-1 rounded text-[10px] font-stat-md bg-surface-variant text-on-surface-variant">3-5-2</button>
+                    <button type="button" data-f="3-4-3" class="formation-btn px-2 py-1 rounded text-[10px] font-stat-md bg-surface-variant text-on-surface-variant">3-4-3</button>
+                    <button type="button" data-f="5-3-2" class="formation-btn px-2 py-1 rounded text-[10px] font-stat-md bg-surface-variant text-on-surface-variant">5-3-2</button>
+                    <button type="button" data-f="5-2-3" class="formation-btn px-2 py-1 rounded text-[10px] font-stat-md bg-surface-variant text-on-surface-variant">5-2-3</button>
+                </div>
+            </div>
+            <p id="build-hint" class="text-xs text-on-surface-variant">Pick your formation, then fill the 11 pitch slots. Bench unlocks after that.</p>
+        </div>
+        <div id="pitch-view" class="relative z-10 flex-none lg:flex-1 min-h-0 overflow-y-auto px-3 py-4 flex flex-col justify-center items-center gap-3 sm:gap-4"></div>
         <div class="relative z-10 p-4 border-t border-outline-variant/50 bg-surface/80 space-y-3 shrink-0">
             <div class="grid grid-cols-2 gap-3">
                 <div>

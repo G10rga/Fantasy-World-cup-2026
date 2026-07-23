@@ -1,24 +1,78 @@
 const POSITION_LIMITS = { GK: 2, DEF: 5, MID: 5, FWD: 3 };
 const SQUAD_SIZE = 15;
 const STARTING_XI = 11;
+const BENCH_SIZE = 4;
 const BUDGET = 100.0;
-// Must match backend VALID_FORMATIONS with the "at least 2 forwards" rule
-const VALID_FORMATIONS = [
-  [3, 4, 3],
-  [3, 5, 2],
-  [4, 3, 3],
-  [4, 4, 2],
-  [5, 2, 3],
-  [5, 3, 2],
-];
 
+/** formation key -> { DEF, MID, FWD } (GK always 1) */
+const FORMATIONS = {
+  '4-3-3': { DEF: 4, MID: 3, FWD: 3 },
+  '4-4-2': { DEF: 4, MID: 4, FWD: 2 },
+  '3-5-2': { DEF: 3, MID: 5, FWD: 2 },
+  '3-4-3': { DEF: 3, MID: 4, FWD: 3 },
+  '5-3-2': { DEF: 5, MID: 3, FWD: 2 },
+  '5-2-3': { DEF: 5, MID: 2, FWD: 3 },
+};
+
+let formationKey = '4-3-3';
 let squad = [];
 let allPlayers = [];
 let searchQuery = '';
-let activeSlotPos = null;
+/** @type {null | { kind: 'xi'|'bench', pos: string }} */
+let activeSlot = null;
+
+function formationSlots() {
+  const f = FORMATIONS[formationKey];
+  return { GK: 1, DEF: f.DEF, MID: f.MID, FWD: f.FWD };
+}
+
+function benchSlots() {
+  const xi = formationSlots();
+  return {
+    GK: POSITION_LIMITS.GK - xi.GK,
+    DEF: POSITION_LIMITS.DEF - xi.DEF,
+    MID: POSITION_LIMITS.MID - xi.MID,
+    FWD: POSITION_LIMITS.FWD - xi.FWD,
+  };
+}
 
 function positionCount(pos) {
   return squad.filter((p) => p.position === pos).length;
+}
+
+function starters() {
+  return squad.filter((p) => p.is_starting);
+}
+
+function bench() {
+  return squad.filter((p) => !p.is_starting).sort((a, b) => (a.bench_order || 99) - (b.bench_order || 99));
+}
+
+function startersByPos() {
+  const byPos = { GK: [], DEF: [], MID: [], FWD: [] };
+  starters().forEach((p) => byPos[p.position]?.push(p));
+  return byPos;
+}
+
+function benchByPos() {
+  const byPos = { GK: [], DEF: [], MID: [], FWD: [] };
+  bench().forEach((p) => byPos[p.position]?.push(p));
+  return byPos;
+}
+
+function xiComplete() {
+  if (starters().length !== STARTING_XI) return false;
+  const need = formationSlots();
+  const have = startersByPos();
+  return ['GK', 'DEF', 'MID', 'FWD'].every((pos) => have[pos].length === need[pos]);
+}
+
+function benchComplete() {
+  return bench().length === BENCH_SIZE && squad.length === SQUAD_SIZE;
+}
+
+function currentPhase() {
+  return xiComplete() ? 'bench' : 'xi';
 }
 
 function squadCost() {
@@ -31,81 +85,43 @@ function shortName(name) {
   return (parts[parts.length - 1] || name).toUpperCase().slice(0, 10);
 }
 
-function startersByPos() {
-  const byPos = { GK: [], DEF: [], MID: [], FWD: [] };
-  squad.filter((p) => p.is_starting).forEach((p) => byPos[p.position]?.push(p));
-  return byPos;
-}
-
-function squadByPos() {
-  const byPos = { GK: [], DEF: [], MID: [], FWD: [] };
-  squad.forEach((p) => byPos[p.position]?.push(p));
-  return byPos;
-}
-
-function preferKeepStarting(players) {
-  return [...players].sort((a, b) => Number(b.is_starting) - Number(a.is_starting));
-}
-
-/** Pick a valid XI from the current 15 (or partial squad). */
-function rebalanceStarting() {
-  const byPos = squadByPos();
-  for (const pos of Object.keys(byPos)) {
-    byPos[pos] = preferKeepStarting(byPos[pos]);
-  }
-
-  let best = null;
-  let bestScore = -1;
-  for (const [d, m, f] of VALID_FORMATIONS) {
-    if (byPos.GK.length < 1) continue;
-    if (byPos.DEF.length < d || byPos.MID.length < m || byPos.FWD.length < f) continue;
-    // Prefer formations that start more of our FWDs, then more players overall fit
-    const score = f * 100 + d * 10 + m;
-    if (score > bestScore) {
-      bestScore = score;
-      best = [d, m, f];
-    }
-  }
-
-  const startIds = new Set();
-  if (best) {
-    const [d, m, f] = best;
-    byPos.GK.slice(0, 1).forEach((p) => startIds.add(p.id));
-    byPos.DEF.slice(0, d).forEach((p) => startIds.add(p.id));
-    byPos.MID.slice(0, m).forEach((p) => startIds.add(p.id));
-    byPos.FWD.slice(0, f).forEach((p) => startIds.add(p.id));
-  } else {
-    // Incomplete squad: greedy partial XI (1 GK, ≥2 FWD when possible, ≥3 DEF when possible)
-    byPos.GK.slice(0, 1).forEach((p) => startIds.add(p.id));
-    byPos.FWD.slice(0, Math.min(2, byPos.FWD.length)).forEach((p) => startIds.add(p.id));
-    byPos.DEF.slice(0, Math.min(3, byPos.DEF.length)).forEach((p) => startIds.add(p.id));
-    const rest = [...byPos.MID, ...byPos.DEF, ...byPos.FWD, ...byPos.GK]
-      .filter((p) => !startIds.has(p.id));
-    for (const p of rest) {
-      if (startIds.size >= STARTING_XI) break;
-      if (p.position === 'GK' && [...startIds].some((id) => squad.find((s) => s.id === id)?.position === 'GK')) {
-        continue;
-      }
-      startIds.add(p.id);
-    }
-  }
-
-  squad.forEach((p) => {
-    p.is_starting = startIds.has(p.id);
-  });
-  reindexBench();
-}
-
 function reindexBench() {
-  squad
-    .filter((p) => !p.is_starting)
-    .sort((a, b) => (a.bench_order || 99) - (b.bench_order || 99))
-    .forEach((p, i) => {
-      p.bench_order = i + 1;
-    });
-  squad.filter((p) => p.is_starting).forEach((p) => {
+  bench().forEach((p, i) => {
+    p.bench_order = i + 1;
+  });
+  starters().forEach((p) => {
     p.bench_order = null;
   });
+}
+
+function setStatus(msg, isError) {
+  const el = document.getElementById('save-msg');
+  if (!msg) {
+    el.textContent = '';
+    el.className = '';
+    return;
+  }
+  el.textContent = msg;
+  el.className = isError ? 'error-msg' : 'success-msg';
+}
+
+function updatePhaseUi() {
+  const phase = currentPhase();
+  const xiN = starters().length;
+  const benchN = bench().length;
+  const phaseEl = document.getElementById('build-phase');
+  const hintEl = document.getElementById('build-hint');
+
+  if (phase === 'xi') {
+    phaseEl.textContent = `STEP 1 · STARTING XI ${xiN}/${STARTING_XI}`;
+    hintEl.textContent = `Fill every pitch slot for ${formationKey}. Bench stays locked until your XI is complete.`;
+  } else if (!benchComplete()) {
+    phaseEl.textContent = `STEP 2 · BENCH ${benchN}/${BENCH_SIZE}`;
+    hintEl.textContent = 'XI locked in. Add your 4 bench players into the bench slots below.';
+  } else {
+    phaseEl.textContent = 'READY · 15/15';
+    hintEl.textContent = 'Squad complete. Set captain & vice, then save.';
+  }
 }
 
 function updateBudget() {
@@ -118,6 +134,78 @@ function updateBudget() {
   document.getElementById('squad-count-footer').textContent = `${squad.length} / ${SQUAD_SIZE}`;
   document.getElementById('budget-bar-label').textContent = `$${spent.toFixed(1)}m / $${BUDGET.toFixed(1)}m`;
   document.getElementById('budget-bar').style.width = `${Math.min(100, (spent / BUDGET) * 100)}%`;
+  updatePhaseUi();
+}
+
+function updateFormationPills() {
+  document.querySelectorAll('.formation-btn').forEach((btn) => {
+    const on = btn.dataset.f === formationKey;
+    btn.classList.toggle('bg-primary-container', on);
+    btn.classList.toggle('text-on-primary-container', on);
+    btn.classList.toggle('bg-surface-variant', !on);
+    btn.classList.toggle('text-on-surface-variant', !on);
+  });
+}
+
+function applyFormation(key) {
+  if (!FORMATIONS[key]) return;
+  const prev = formationSlots();
+  formationKey = key;
+  const next = formationSlots();
+
+  // Keep players; demote any starters that no longer fit the new shape
+  ['DEF', 'MID', 'FWD'].forEach((pos) => {
+    const list = startersByPos()[pos];
+    const keep = next[pos];
+    list.slice(keep).forEach((p) => {
+      p.is_starting = false;
+    });
+  });
+  // GK: only 1 starter
+  startersByPos().GK.slice(1).forEach((p) => {
+    p.is_starting = false;
+  });
+
+  // If we demoted people before XI was complete, they sit as "orphan" bench early —
+  // move orphans out of squad? Better: if XI incomplete, remove demoted from squad
+  // so user isn't confused. Or keep them and if !xiComplete treat non-starters as invalid.
+  if (!xiComplete()) {
+    // Drop anyone not starting while still building XI (formation change mid-pick)
+    const orphanIds = new Set(bench().map((p) => p.id));
+    if (orphanIds.size) {
+      squad = squad.filter((p) => p.is_starting);
+      setStatus(`Formation set to ${key}. Extra players were cleared — refill the new pitch slots.`, true);
+    } else {
+      setStatus('');
+    }
+  }
+
+  // If somehow over bench quotas after formation change on complete XI, trim bench overflow
+  if (xiComplete()) {
+    const quotas = benchSlots();
+    const bPos = benchByPos();
+    ['GK', 'DEF', 'MID', 'FWD'].forEach((pos) => {
+      bPos[pos].slice(quotas[pos]).forEach((p) => {
+        squad = squad.filter((s) => s.id !== p.id);
+      });
+    });
+  }
+
+  reindexBench();
+  activeSlot = null;
+  updateFormationPills();
+  refresh();
+}
+
+function detectFormationFromStarters() {
+  const s = startersByPos();
+  if (s.GK.length !== 1) return null;
+  for (const [key, f] of Object.entries(FORMATIONS)) {
+    if (s.DEF.length === f.DEF && s.MID.length === f.MID && s.FWD.length === f.FWD) {
+      return key;
+    }
+  }
+  return null;
 }
 
 function renderPlayerRow(player) {
@@ -140,7 +228,6 @@ function renderPlayerRow(player) {
             <span class="font-stat-md bg-surface-variant px-1 rounded">${player.position}</span>
             <span>${code}</span>
             ${role ? `<span class="text-primary">${role}</span>` : ''}
-            ${player.scouting_bonus_eligible ? '<span class="text-tertiary">Scout</span>' : ''}
           </div>
         </div>
       </div>
@@ -163,7 +250,8 @@ function renderPlayerGrid(players) {
     const q = searchQuery.toLowerCase();
     list = list.filter((p) => p.name.toLowerCase().includes(q));
   }
-  if (activeSlotPos) {
+  if (activeSlot) {
+    list = list.filter((p) => p.position === activeSlot.pos);
     list = [...list].sort((a, b) => {
       const aIn = squad.some((p) => p.id === a.id) ? 1 : 0;
       const bIn = squad.some((p) => p.id === b.id) ? 1 : 0;
@@ -172,30 +260,57 @@ function renderPlayerGrid(players) {
   }
   const grid = document.getElementById('player-grid');
   if (!list.length) {
-    grid.innerHTML = `<div class="text-center py-16 text-on-surface-variant font-body-sm">${activeSlotPos ? `No ${activeSlotPos} players found` : 'No players found'}</div>`;
+    grid.innerHTML = '<div class="text-center py-16 text-on-surface-variant font-body-sm">No players found</div>';
     return;
   }
-  const hint = activeSlotPos
-    ? `<div class="px-2 py-2 mb-1 text-xs text-primary font-label-caps tracking-wide">Select a ${activeSlotPos} for your squad</div>`
-    : '';
+  let hint = '';
+  if (activeSlot?.kind === 'xi') {
+    hint = `<div class="px-2 py-2 mb-1 text-xs text-primary font-label-caps tracking-wide">Pick a ${activeSlot.pos} for your starting XI</div>`;
+  } else if (activeSlot?.kind === 'bench') {
+    hint = `<div class="px-2 py-2 mb-1 text-xs text-primary font-label-caps tracking-wide">Pick a ${activeSlot.pos} for the bench</div>`;
+  } else if (currentPhase() === 'xi') {
+    hint = `<div class="px-2 py-2 mb-1 text-xs text-on-surface-variant">Tap an empty pitch slot, or use + to fill your ${formationKey} XI (${starters().length}/${STARTING_XI})</div>`;
+  } else {
+    hint = `<div class="px-2 py-2 mb-1 text-xs text-on-surface-variant">Tap an empty bench slot to add reserves (${bench().length}/${BENCH_SIZE})</div>`;
+  }
   grid.innerHTML = hint + list.map(renderPlayerRow).join('');
 }
 
-function emptySlot(pos) {
-  const active = activeSlotPos === pos;
+function emptyXiSlot(pos) {
+  const active = activeSlot?.kind === 'xi' && activeSlot.pos === pos;
   return `
-    <button type="button" class="flex flex-col items-center group" onclick="selectSlot('${pos}')" title="Add ${pos}">
-      <div class="w-14 h-14 md:w-16 md:h-16 rounded-full bg-surface-elevated border-2 border-dashed ${active ? 'border-primary bg-primary/10' : 'border-outline-variant group-hover:border-primary'} flex items-center justify-center shadow-lg cursor-pointer transition-colors">
+    <button type="button" class="flex flex-col items-center group" onclick="selectXiSlot('${pos}')" title="Add starting ${pos}">
+      <div class="w-14 h-14 md:w-16 md:h-16 rounded-full bg-surface-elevated border-2 border-dashed ${active ? 'border-primary bg-primary/10' : 'border-outline-variant group-hover:border-primary'} flex items-center justify-center shadow-lg transition-colors">
         <span class="material-symbols-outlined ${active ? 'text-primary' : 'text-outline-variant group-hover:text-primary'}">add</span>
       </div>
       <span class="text-xs font-medium mt-3 ${active ? 'text-primary' : 'text-outline-variant'}">${pos}</span>
     </button>`;
 }
 
+function emptyBenchSlot(pos, locked) {
+  const active = !locked && activeSlot?.kind === 'bench' && activeSlot.pos === pos;
+  if (locked) {
+    return `
+      <div class="flex flex-col items-center opacity-40" title="Finish starting XI first">
+        <div class="w-12 h-12 rounded-full bg-surface-elevated border-2 border-dashed border-outline-variant flex items-center justify-center">
+          <span class="material-symbols-outlined text-outline-variant text-sm">lock</span>
+        </div>
+        <span class="text-[10px] mt-2 text-outline-variant">${pos}</span>
+      </div>`;
+  }
+  return `
+    <button type="button" class="flex flex-col items-center group" onclick="selectBenchSlot('${pos}')" title="Add bench ${pos}">
+      <div class="w-12 h-12 rounded-full bg-surface-elevated border-2 border-dashed ${active ? 'border-primary bg-primary/10' : 'border-outline-variant group-hover:border-primary'} flex items-center justify-center transition-colors">
+        <span class="material-symbols-outlined text-sm ${active ? 'text-primary' : 'text-outline-variant'}">add</span>
+      </div>
+      <span class="text-[10px] mt-2 ${active ? 'text-primary' : 'text-outline-variant'}">${pos}</span>
+    </button>`;
+}
+
 function filledSlot(player) {
   const photo = player.photo_url || '';
   return `
-    <button type="button" class="flex flex-col items-center cursor-pointer" onclick="benchPlayer(${player.id})" title="Move ${player.name} to bench">
+    <button type="button" class="flex flex-col items-center" onclick="removePlayer(${player.id})" title="Remove ${player.name}">
       <div class="w-14 h-14 md:w-16 md:h-16 rounded-full bg-surface-elevated border-2 border-primary flex items-center justify-center shadow-lg relative hover:scale-105 transition-transform overflow-hidden">
         ${photo
           ? `<img src="${photo}" class="w-full h-full object-cover" alt="" onerror="this.remove()">`
@@ -206,79 +321,79 @@ function filledSlot(player) {
     </button>`;
 }
 
-function benchSlot(player) {
+function filledBenchSlot(player) {
   const photo = player.photo_url || '';
   return `
-    <button type="button" class="flex flex-col items-center cursor-pointer" onclick="promotePlayer(${player.id})" title="Start ${player.name}">
-      <div class="w-12 h-12 rounded-full bg-surface-elevated border-2 border-outline-variant flex items-center justify-center shadow relative hover:border-primary transition-colors overflow-hidden">
+    <button type="button" class="flex flex-col items-center" onclick="removePlayer(${player.id})" title="Remove ${player.name}">
+      <div class="w-12 h-12 rounded-full bg-surface-elevated border-2 border-primary/60 flex items-center justify-center relative overflow-hidden hover:border-danger transition-colors">
         ${photo
           ? `<img src="${photo}" class="w-full h-full object-cover" alt="" onerror="this.remove()">`
-          : `<span class="material-symbols-outlined text-outline-variant text-sm">person</span>`}
+          : `<span class="material-symbols-outlined text-primary text-sm">person</span>`}
       </div>
       <span class="text-[10px] font-bold mt-2 text-on-surface-variant">${shortName(player.name)}</span>
       <span class="text-[9px] text-outline-variant">${player.position}</span>
     </button>`;
 }
 
-function renderPitch() {
-  const starters = startersByPos();
-  const maxShow = {
-    FWD: Math.min(POSITION_LIMITS.FWD, Math.max(2, starters.FWD.length)),
-    MID: Math.min(POSITION_LIMITS.MID, Math.max(starters.MID.length, 2)),
-    DEF: Math.min(POSITION_LIMITS.DEF, Math.max(3, starters.DEF.length)),
-    GK: 1,
-  };
-  // Leave an empty add-slot while that position still has room in the 15
-  for (const pos of ['FWD', 'MID', 'DEF']) {
-    if (positionCount(pos) < POSITION_LIMITS[pos] && starters[pos].length >= maxShow[pos]) {
-      maxShow[pos] = Math.min(POSITION_LIMITS[pos], starters[pos].length + 1);
-    }
+function rowSlots(pos, filled, total, emptyFn) {
+  const slots = filled.map((p) => (emptyFn === emptyBenchSlot ? filledBenchSlot(p) : filledSlot(p)));
+  const empties = Math.max(0, total - filled.length);
+  for (let i = 0; i < empties; i++) {
+    slots.push(emptyFn(pos));
   }
+  return slots;
+}
 
-  function row(pos, max) {
-    const filled = starters[pos] || [];
-    const slots = filled.map((p) => filledSlot(p));
-    const empties = Math.max(0, max - filled.length);
-    for (let i = 0; i < empties; i++) slots.push(emptySlot(pos));
-    if (!slots.length) return '';
+function renderPitch() {
+  const need = formationSlots();
+  const have = startersByPos();
+  const bNeed = benchSlots();
+  const bHave = benchByPos();
+  const lockedBench = !xiComplete();
+
+  function xiRow(pos) {
+    const slots = [];
+    have[pos].forEach((p) => slots.push(filledSlot(p)));
+    for (let i = have[pos].length; i < need[pos]; i++) slots.push(emptyXiSlot(pos));
     return `<div class="flex justify-center gap-2 md:gap-3 w-full flex-wrap">${slots.join('')}</div>`;
   }
 
-  const bench = squad
-    .filter((p) => !p.is_starting)
-    .sort((a, b) => (a.bench_order || 99) - (b.bench_order || 99));
-
-  const benchHtml = bench.length
-    ? `<div class="w-full mt-1 pt-3 border-t border-white/10">
-        <div class="text-[10px] font-label-caps text-outline-variant mb-2 text-center tracking-wider">BENCH · tap to start</div>
-        <div class="flex justify-center gap-3 flex-wrap">${bench.map(benchSlot).join('')}</div>
-      </div>`
-    : (squad.length
-      ? `<div class="w-full mt-1 pt-3 border-t border-white/10 text-center text-[10px] text-outline-variant">All selected players are in your XI</div>`
-      : '');
+  // Bench empties in a stable order: GK, DEF, MID, FWD
+  const benchBits = [];
+  ['GK', 'DEF', 'MID', 'FWD'].forEach((pos) => {
+    bHave[pos].forEach((p) => benchBits.push(filledBenchSlot(p)));
+    for (let i = bHave[pos].length; i < bNeed[pos]; i++) {
+      benchBits.push(emptyBenchSlot(pos, lockedBench));
+    }
+  });
 
   document.getElementById('pitch-view').innerHTML = `
-    ${row('FWD', maxShow.FWD)}
-    ${row('MID', maxShow.MID)}
-    ${row('DEF', maxShow.DEF)}
-    ${row('GK', maxShow.GK)}
-    ${benchHtml}
+    ${xiRow('FWD')}
+    ${xiRow('MID')}
+    ${xiRow('DEF')}
+    ${xiRow('GK')}
+    <div class="w-full mt-1 pt-3 border-t border-white/10">
+      <div class="text-[10px] font-label-caps ${lockedBench ? 'text-outline-variant' : 'text-primary'} mb-2 text-center tracking-wider">
+        ${lockedBench ? 'BENCH · LOCKED UNTIL XI IS FULL' : 'BENCH · TAP + TO ADD'}
+      </div>
+      <div class="flex justify-center gap-3 flex-wrap">${benchBits.join('')}</div>
+    </div>
   `;
 
   updateCaptainSelects();
 }
 
 function updateCaptainSelects() {
-  const starters = squad.filter((p) => p.is_starting);
+  const list = starters();
   const capSel = document.getElementById('captain-select');
   const viceSel = document.getElementById('vice-select');
   const capVal = capSel.value;
   const viceVal = viceSel.value;
-  const opts = starters.map((p) => `<option value="${p.id}">${p.name}</option>`).join('') || '<option value="">— Select —</option>';
+  const opts = list.map((p) => `<option value="${p.id}">${p.name}</option>`).join('') || '<option value="">— Select —</option>';
   capSel.innerHTML = opts;
   viceSel.innerHTML = opts;
-  if (capVal && starters.some((p) => String(p.id) === String(capVal))) capSel.value = capVal;
-  if (viceVal && starters.some((p) => String(p.id) === String(viceVal))) viceSel.value = viceVal;
+  if (capVal && list.some((p) => String(p.id) === String(capVal))) capSel.value = capVal;
+  if (viceVal && list.some((p) => String(p.id) === String(viceVal))) viceSel.value = viceVal;
 }
 
 function updatePosChips(pos) {
@@ -294,84 +409,141 @@ function updatePosChips(pos) {
   document.getElementById('filter-position').value = pos || '';
 }
 
-window.selectSlot = function (pos) {
-  activeSlotPos = pos;
-  updatePosChips(pos);
-  loadPlayers();
+function scrollToPlayers() {
   const panel = document.getElementById('player-grid');
   if (panel && window.matchMedia('(max-width: 1023px)').matches) {
     panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
+}
+
+window.selectXiSlot = function (pos) {
+  if (startersByPos()[pos].length >= formationSlots()[pos]) return;
+  activeSlot = { kind: 'xi', pos };
+  updatePosChips(pos);
+  loadPlayers().then(() => {
+    renderPlayerGrid(allPlayers);
+  });
+  setStatus('');
   renderPitch();
+  scrollToPlayers();
+};
+
+window.selectBenchSlot = function (pos) {
+  if (!xiComplete()) {
+    setStatus('Finish your starting XI before picking the bench.', true);
+    return;
+  }
+  if (benchByPos()[pos].length >= benchSlots()[pos]) return;
+  activeSlot = { kind: 'bench', pos };
+  updatePosChips(pos);
+  loadPlayers().then(() => {
+    renderPlayerGrid(allPlayers);
+  });
+  setStatus('');
+  renderPitch();
+  scrollToPlayers();
 };
 
 window.addPlayer = function (id) {
   const player = allPlayers.find((p) => p.id === id);
   if (!player) return;
-  if (squad.length >= SQUAD_SIZE) { alert('Squad is full (15 players)'); return; }
+  if (squad.some((p) => p.id === id)) return;
+  if (squad.length >= SQUAD_SIZE) {
+    setStatus('Squad is full (15 players).', true);
+    return;
+  }
   if (positionCount(player.position) >= POSITION_LIMITS[player.position]) {
-    alert(`Maximum ${POSITION_LIMITS[player.position]} ${player.position} players`);
+    setStatus(`Maximum ${POSITION_LIMITS[player.position]} ${player.position} players.`, true);
     return;
   }
   const countryCount = squad.filter((p) => p.country_id === player.country_id).length;
-  if (countryCount >= 3) { alert('Maximum 3 players from same country'); return; }
-
-  squad.push({
-    ...player,
-    is_starting: true, // rebalanceStarting will place them correctly
-    bench_order: null,
-  });
-  rebalanceStarting();
-
-  if (activeSlotPos === player.position) {
-    const filled = squad.filter((p) => p.is_starting && p.position === player.position).length;
-    const need = player.position === 'FWD' ? 2 : player.position === 'DEF' ? 3 : player.position === 'GK' ? 1 : 3;
-    if (filled >= need && positionCount(player.position) >= POSITION_LIMITS[player.position]) {
-      activeSlotPos = null;
-    }
+  if (countryCount >= 3) {
+    setStatus('Maximum 3 players from the same country.', true);
+    return;
   }
+
+  const phase = currentPhase();
+  const pos = player.position;
+
+  // If user focused a slot, honor that kind
+  if (activeSlot) {
+    if (activeSlot.pos !== pos) {
+      setStatus(`That slot needs a ${activeSlot.pos}.`, true);
+      return;
+    }
+    if (activeSlot.kind === 'xi') {
+      if (startersByPos()[pos].length >= formationSlots()[pos]) {
+        setStatus(`${formationKey} only starts ${formationSlots()[pos]} ${pos}.`, true);
+        return;
+      }
+      squad.push({ ...player, is_starting: true, bench_order: null });
+    } else {
+      if (!xiComplete()) {
+        setStatus('Finish your starting XI before picking the bench.', true);
+        return;
+      }
+      if (benchByPos()[pos].length >= benchSlots()[pos]) {
+        setStatus(`No bench slots left for ${pos}.`, true);
+        return;
+      }
+      squad.push({ ...player, is_starting: false, bench_order: bench().length + 1 });
+    }
+  } else if (phase === 'xi') {
+    if (startersByPos()[pos].length >= formationSlots()[pos]) {
+      setStatus(
+        `${formationKey} only starts ${formationSlots()[pos]} ${pos}. Fill other XI slots first — extras go on the bench after.`,
+        true
+      );
+      return;
+    }
+    if (starters().length >= STARTING_XI) {
+      setStatus('Starting XI is full. Add remaining players to the bench.', true);
+      return;
+    }
+    squad.push({ ...player, is_starting: true, bench_order: null });
+  } else {
+    // Bench phase
+    if (benchByPos()[pos].length >= benchSlots()[pos]) {
+      setStatus(`No bench slots left for ${pos} in ${formationKey}.`, true);
+      return;
+    }
+    if (bench().length >= BENCH_SIZE) {
+      setStatus('Bench is full (4 players).', true);
+      return;
+    }
+    squad.push({ ...player, is_starting: false, bench_order: bench().length + 1 });
+  }
+
+  reindexBench();
+
+  // Clear active slot once that row/bench quota for the pos is filled
+  if (activeSlot) {
+    const filled =
+      activeSlot.kind === 'xi'
+        ? startersByPos()[activeSlot.pos].length >= formationSlots()[activeSlot.pos]
+        : benchByPos()[activeSlot.pos].length >= benchSlots()[activeSlot.pos];
+    if (filled) activeSlot = null;
+  }
+
+  setStatus('');
   refresh();
 };
 
 window.removePlayer = function (id) {
+  const wasStarter = squad.find((p) => p.id === id)?.is_starting;
   squad = squad.filter((p) => p.id !== id);
-  rebalanceStarting();
-  refresh();
-};
 
-/** Move a starter to the bench (swaps with a bench player when XI must stay at 11). */
-window.benchPlayer = function (id) {
-  const player = squad.find((p) => p.id === id);
-  if (!player || !player.is_starting) return;
-  const bench = squad.filter((p) => !p.is_starting);
-  // Prefer promoting a bench player of the same position, else any outfield/GK as needed
-  let swap = bench.find((p) => p.position === player.position);
-  if (!swap) swap = bench[0];
-  player.is_starting = false;
-  if (swap) swap.is_starting = true;
-  rebalanceStarting();
-  refresh();
-};
-
-/** Promote a bench player into the XI. */
-window.promotePlayer = function (id) {
-  const player = squad.find((p) => p.id === id);
-  if (!player || player.is_starting) return;
-  player.is_starting = true;
-  // If over 11, demote someone else (prefer same position excess, else last added starter of overloaded pos)
-  const starters = squad.filter((p) => p.is_starting);
-  if (starters.length > STARTING_XI) {
-    const demote = starters
-      .filter((p) => p.id !== player.id)
-      .sort((a, b) => {
-        // Prefer demoting a different position that has surplus vs formation needs
-        if (a.position === player.position && b.position !== player.position) return 1;
-        if (b.position === player.position && a.position !== player.position) return -1;
-        return 0;
-      })[0];
-    if (demote) demote.is_starting = false;
+  // If we broke the XI, anyone left on "bench" while XI incomplete must be cleared
+  // (bench is locked until XI is done — orphans shouldn't linger)
+  if (wasStarter && !xiComplete()) {
+    const orphans = bench();
+    if (orphans.length) {
+      squad = squad.filter((p) => p.is_starting);
+      setStatus('Starting XI changed — bench was cleared. Refill the XI, then the bench.', true);
+    }
   }
-  rebalanceStarting();
+
+  reindexBench();
   refresh();
 };
 
@@ -379,14 +551,6 @@ function refresh() {
   updateBudget();
   renderPlayerGrid(allPlayers);
   renderPitch();
-}
-
-function formationOk() {
-  const s = startersByPos();
-  if (s.GK.length !== 1) return false;
-  return VALID_FORMATIONS.some(
-    ([d, m, f]) => s.DEF.length === d && s.MID.length === m && s.FWD.length === f
-  );
 }
 
 async function loadPlayers() {
@@ -432,16 +596,28 @@ async function loadExistingTeam() {
         is_starting: ftp.is_starting,
         bench_order: ftp.bench_order,
       }));
-      // Fix broken XI (e.g. 0 FWDs starting while FWDs sit on bench)
-      if (squad.length && !formationOk()) {
-        rebalanceStarting();
+      const detected = detectFormationFromStarters();
+      if (detected) {
+        formationKey = detected;
+      } else if (data.team.formation && FORMATIONS[data.team.formation]) {
+        formationKey = data.team.formation;
       }
+      // If saved XI doesn't match a formation, keep players but force into default by demoting overflow
+      if (!detectFormationFromStarters()) {
+        applyFormation(formationKey);
+        return;
+      }
+      updateFormationPills();
       if (data.team.captain_id) document.getElementById('captain-select').value = data.team.captain_id;
       if (data.team.vice_captain_id) document.getElementById('vice-select').value = data.team.vice_captain_id;
       refresh();
     }
-  } catch (_) { /* not logged in */ }
+  } catch (_) { /* guest */ }
 }
+
+document.querySelectorAll('.formation-btn').forEach((btn) => {
+  btn.addEventListener('click', () => applyFormation(btn.dataset.f));
+});
 
 document.getElementById('filter-apply').addEventListener('click', loadPlayers);
 document.getElementById('filter-sort').addEventListener('change', loadPlayers);
@@ -450,7 +626,9 @@ document.getElementById('filter-country').addEventListener('change', loadPlayers
 document.querySelectorAll('.pos-chip').forEach((btn) => {
   btn.addEventListener('click', () => {
     const pos = btn.dataset.pos || '';
-    activeSlotPos = pos || null;
+    activeSlot = pos
+      ? { kind: currentPhase() === 'bench' ? 'bench' : 'xi', pos }
+      : null;
     updatePosChips(pos);
     loadPlayers();
     renderPitch();
@@ -467,35 +645,26 @@ document.getElementById('player-search').addEventListener('input', (e) => {
 });
 
 document.getElementById('save-squad').addEventListener('click', async () => {
-  const msg = document.getElementById('save-msg');
   if (squad.length !== SQUAD_SIZE) {
-    msg.textContent = 'Squad must have exactly 15 players';
-    msg.className = 'error-msg';
+    setStatus(`Squad must have exactly 15 players (have ${squad.length}).`, true);
     return;
   }
-  rebalanceStarting();
-  refresh();
-  const starters = squad.filter((p) => p.is_starting);
-  if (starters.length !== STARTING_XI) {
-    msg.textContent = `Starting XI must have exactly ${STARTING_XI} players (currently ${starters.length})`;
-    msg.className = 'error-msg';
+  if (!xiComplete()) {
+    setStatus(`Complete your ${formationKey} starting XI first (${starters().length}/${STARTING_XI}).`, true);
     return;
   }
-  if (!formationOk()) {
-    msg.textContent = 'Invalid starting formation. Need 1 GK and a valid DEF-MID-FWD (min 2 FWD).';
-    msg.className = 'error-msg';
+  if (bench().length !== BENCH_SIZE) {
+    setStatus(`Add all 4 bench players (${bench().length}/${BENCH_SIZE}).`, true);
     return;
   }
   const captainId = parseInt(document.getElementById('captain-select').value, 10);
   const viceId = parseInt(document.getElementById('vice-select').value, 10);
   if (!captainId || !viceId) {
-    msg.textContent = 'Select a captain and vice captain';
-    msg.className = 'error-msg';
+    setStatus('Select a captain and vice captain.', true);
     return;
   }
   if (captainId === viceId) {
-    msg.textContent = 'Captain and vice captain must be different players';
-    msg.className = 'error-msg';
+    setStatus('Captain and vice captain must be different.', true);
     return;
   }
   const payload = {
@@ -516,18 +685,17 @@ document.getElementById('save-squad').addEventListener('click', async () => {
     });
     const data = await res.json().catch(() => ({ success: false, message: 'Server error' }));
     if (data.success) {
-      msg.textContent = 'Squad saved successfully!';
-      msg.className = 'success-msg';
+      setStatus('Squad saved successfully!', false);
     } else {
-      msg.textContent = data.message || (res.status === 401 ? 'Please log in first' : 'Save failed');
-      msg.className = 'error-msg';
+      setStatus(data.message || (res.status === 401 ? 'Please log in first' : 'Save failed'), true);
     }
   } catch (_) {
-    msg.textContent = 'Network error';
-    msg.className = 'error-msg';
+    setStatus('Network error', true);
   }
 });
 
+updateFormationPills();
 loadCountries();
 loadPlayers();
 loadExistingTeam();
+refresh();
