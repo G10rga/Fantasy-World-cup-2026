@@ -556,6 +556,116 @@ def list_countries():
 
 # ── Admin / Sync ───────────────────────────────────────────────────────────
 
+@fantasy_bp.route("/api/admin/players/missing-photos", methods=["GET"])
+@login_required
+def admin_missing_photos():
+    """List players that still need a headshot (for manual URI filling)."""
+    err = _admin_required()
+    if err:
+        return err
+    limit = request.args.get("limit", 200, type=int)
+    players = (
+        Player.query.filter(
+            (Player.photo_url.is_(None))
+            | (Player.photo_url == "")
+            | (Player.photo_url == "-")
+        )
+        .order_by(Player.name.asc())
+        .limit(max(1, min(limit, 1000)))
+        .all()
+    )
+    return _success({
+        "count": len(players),
+        "players": [
+            {
+                "id": p.id,
+                "name": p.name,
+                "position": p.position,
+                "country": p.country.name if p.country else None,
+                "photo_url": None,
+            }
+            for p in players
+        ],
+    })
+
+
+@fantasy_bp.route("/api/admin/players/<int:player_id>/photo", methods=["PUT"])
+@login_required
+def admin_set_player_photo(player_id):
+    """Set a manual photo URL for one player.
+
+    Body: { "photo_url": "https://..." }  (empty string clears / marks none)
+    """
+    err = _admin_required()
+    if err:
+        return err
+    player = db.session.get(Player, player_id)
+    if not player:
+        return _error("NOT_FOUND", "Player not found", status=404)
+    data = request.get_json(silent=True) or {}
+    url = data.get("photo_url")
+    if url is None:
+        return _error("VALIDATION_ERROR", "photo_url is required")
+    url = str(url).strip()
+    player.photo_url = url or "-"
+    db.session.commit()
+    return _success({"player": player.to_dict()})
+
+
+@fantasy_bp.route("/api/admin/players/photos", methods=["POST"])
+@login_required
+def admin_bulk_set_photos():
+    """Bulk-set manual photo URLs.
+
+    Body: {
+      "photos": [
+        { "player_id": 123, "photo_url": "https://..." },
+        { "name": "Fernando Muslera", "photo_url": "https://..." }
+      ]
+    }
+    """
+    err = _admin_required()
+    if err:
+        return err
+    data = request.get_json(silent=True) or {}
+    rows = data.get("photos") or []
+    if not isinstance(rows, list) or not rows:
+        return _error("VALIDATION_ERROR", "photos must be a non-empty list")
+
+    updated = 0
+    skipped = []
+    for row in rows:
+        if not isinstance(row, dict):
+            skipped.append({"row": row, "reason": "invalid row"})
+            continue
+        url = str(row.get("photo_url") or "").strip()
+        if not url:
+            skipped.append({"row": row, "reason": "missing photo_url"})
+            continue
+
+        player = None
+        pid = row.get("player_id")
+        if pid is not None:
+            player = db.session.get(Player, int(pid))
+        elif row.get("name"):
+            name = str(row["name"]).strip()
+            matches = Player.query.filter(Player.name.ilike(name)).all()
+            if len(matches) == 1:
+                player = matches[0]
+            elif len(matches) > 1:
+                skipped.append({"row": row, "reason": f"ambiguous name ({len(matches)} matches)"})
+                continue
+        if not player:
+            skipped.append({"row": row, "reason": "player not found"})
+            continue
+
+        player.photo_url = url
+        updated += 1
+
+    db.session.commit()
+    return _success({"updated": updated, "skipped": skipped})
+
+
 @fantasy_bp.route("/api/admin/sync/players", methods=["POST"])
 @login_required
 def admin_sync_players():
