@@ -666,6 +666,18 @@ def admin_bulk_set_photos():
     return _success({"updated": updated, "skipped": skipped})
 
 
+@fantasy_bp.route("/api/admin/players/photos/apply-manual", methods=["POST"])
+@login_required
+def admin_apply_manual_photos():
+    """Re-apply ``app/data/player_photos.py`` overrides into the DB."""
+    err = _admin_required()
+    if err:
+        return err
+    from app.data.player_photos import apply_manual_player_photos
+    only_missing = bool((request.get_json(silent=True) or {}).get("only_missing"))
+    return _success(apply_manual_player_photos(only_missing=only_missing))
+
+
 @fantasy_bp.route("/api/admin/sync/players", methods=["POST"])
 @login_required
 def admin_sync_players():

@@ -134,6 +134,14 @@ def create_app(config_name=None):
                     else:
                         print("AUTO_SYNC: skipped (players already present)", flush=True)
 
+                    # Manual URI map from app/data/player_photos.py (instant, persisted)
+                    try:
+                        from app.data.player_photos import apply_manual_player_photos
+                        manual = apply_manual_player_photos(only_missing=False)
+                        print(f"AUTO_SYNC: manual photos {manual}", flush=True)
+                    except Exception as manual_exc:
+                        print(f"AUTO_SYNC: manual photos failed: {manual_exc}", flush=True)
+
                     # Always (re)scan for better coverage: untried first, then one retry of empties
                     from app.data.sync import _photo_stats
 
