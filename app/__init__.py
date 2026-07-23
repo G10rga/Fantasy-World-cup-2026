@@ -1,4 +1,6 @@
 import click
+import threading
+import time
 from flask import Flask, jsonify, redirect, render_template, request, url_for
 from flask_caching import Cache
 from flask_login import LoginManager
@@ -131,12 +133,35 @@ def create_app(config_name=None):
                         print(f"AUTO_SYNC: fixtures {fixtures_result}", flush=True)
                     else:
                         print("AUTO_SYNC: skipped (players already present)", flush=True)
-                        from app.data.sync import sync_player_photos
-                        missing_photos = Player.query.filter(Player.photo_url.is_(None)).count()
-                        if missing_photos > 0:
-                            print(f"AUTO_SYNC: fetching photos for {missing_photos} players…", flush=True)
-                            photo_result = sync_player_photos()
-                            print(f"AUTO_SYNC: photos {photo_result}", flush=True)
+
+                    missing_photos = Player.query.filter(Player.photo_url.is_(None)).count()
+                    if missing_photos > 0:
+                        print(f"AUTO_SYNC: starting background photo sync ({missing_photos} missing)…", flush=True)
+
+                        def _photo_worker(app):
+                            with app.app_context():
+                                from app.data.sync import sync_player_photos
+                                from app.models import Player as Pl
+
+                                for _ in range(40):
+                                    left = Pl.query.filter(Pl.photo_url.is_(None)).count()
+                                    if left == 0:
+                                        print("AUTO_SYNC: photos complete", flush=True)
+                                        break
+                                    try:
+                                        result = sync_player_photos(batch_size=40)
+                                        print(f"AUTO_SYNC: photos {result}", flush=True)
+                                    except Exception as photo_exc:
+                                        print(f"AUTO_SYNC: photo batch failed: {photo_exc}", flush=True)
+                                        break
+                                    time.sleep(2)
+
+                        threading.Thread(
+                            target=_photo_worker,
+                            args=(flask_app._get_current_object(),),
+                            daemon=True,
+                            name="photo-sync",
+                        ).start()
                 except Exception as exc:
                     db.session.rollback()
                     print(f"AUTO_SEED/SYNC failed: {exc}", flush=True)

@@ -35,6 +35,20 @@ def sync_finished_stats_job():
         logger.error("Finished stats sync failed: %s", exc)
 
 
+def sync_player_photos_job():
+    from app.data.sync import sync_player_photos
+    from app.models import Player
+
+    try:
+        missing = Player.query.filter(Player.photo_url.is_(None)).count()
+        if missing == 0:
+            return
+        result = sync_player_photos(batch_size=50)
+        logger.info("Player photos sync: %s", result)
+    except Exception as exc:
+        logger.error("Player photos sync failed: %s", exc)
+
+
 def init_scheduler(app):
     global _scheduler
     if _scheduler is not None:
@@ -65,6 +79,14 @@ def init_scheduler(app):
         func=_run_with_app_context(app, sync_finished_stats_job),
         trigger=IntervalTrigger(seconds=app.config.get("SCHEDULER_STATS_INTERVAL", 600)),
         id="sync_finished_stats",
+        replace_existing=True,
+        max_instances=1,
+    )
+
+    _scheduler.add_job(
+        func=_run_with_app_context(app, sync_player_photos_job),
+        trigger=IntervalTrigger(seconds=180),
+        id="sync_player_photos",
         replace_existing=True,
         max_instances=1,
     )

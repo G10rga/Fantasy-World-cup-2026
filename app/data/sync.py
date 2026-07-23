@@ -1,9 +1,13 @@
 import logging
 import random
 import re
+import threading
+import time
 import unicodedata
 from datetime import datetime, timezone
 from decimal import Decimal
+
+import requests
 
 from app import db
 from app.data.api_football import ApiFootballClient
@@ -172,6 +176,7 @@ def _sync_wc26_players_from_football_data(wc26_countries) -> tuple[int, str | No
 
 
 PHOTO_CDN = "https://media.api-sports.io/football/players/{}.png"
+THESPORTSDB_SEARCH = "https://www.thesportsdb.com/api/v1/json/3/searchplayers.php"
 
 
 def _af_team_payload(entry: dict) -> dict:
@@ -183,88 +188,163 @@ def _af_team_payload(entry: dict) -> dict:
     return entry
 
 
-def sync_player_photos(*, force: bool = False) -> dict:
-    """Match API-Football WC squads and store player photo URLs.
+def _thesportsdb_photo(player_name: str, nationality: str | None = None) -> str | None:
+    """Fetch a soccer player cutout/thumb from TheSportsDB (free, no API key)."""
+    try:
+        response = requests.get(
+            THESPORTSDB_SEARCH,
+            params={"p": player_name},
+            timeout=20,
+        )
+        if response.status_code >= 400:
+            return None
+        rows = (response.json() or {}).get("player") or []
+    except Exception as exc:
+        logger.debug("TheSportsDB lookup failed for %s: %s", player_name, exc)
+        return None
 
-    Uses ~1 call for teams + 1 call per national team (cached). Images themselves
-    are free on media.api-sports.io and do not consume API quota.
+    nationality_l = (nationality or "").strip().lower()
+    exact = []
+    soft = []
+    for row in rows:
+        if (row.get("strSport") or "").lower() != "soccer":
+            continue
+        photo = row.get("strCutout") or row.get("strThumb")
+        if not photo:
+            continue
+        row_name = (row.get("strPlayer") or "").strip()
+        row_nat = (row.get("strNationality") or "").strip().lower()
+        if nationality_l and row_nat and nationality_l not in row_nat and row_nat not in nationality_l:
+            soft.append(photo)
+            continue
+        if _player_names_match(player_name, row_name):
+            exact.append(photo)
+        else:
+            soft.append(photo)
+    return (exact or soft or [None])[0]
+
+
+def _find_player_loose(api_player_id: int, player_name: str, country_id: int, position: str) -> Player | None:
+    player = _find_player_for_api_stat(api_player_id, player_name, country_id, position)
+    if player:
+        return player
+    needle = _normalize_player_name(player_name)
+    if not needle:
+        return None
+    last = needle.split()[-1]
+    candidates = []
+    for candidate in Player.query.filter_by(country_id=country_id).all():
+        cand = _normalize_player_name(candidate.name)
+        if not cand:
+            continue
+        if cand.split()[-1] != last:
+            continue
+        candidates.append(candidate)
+    if len(candidates) == 1:
+        return candidates[0]
+    by_pos = [c for c in candidates if c.position == position]
+    if len(by_pos) == 1:
+        return by_pos[0]
+    return None
+
+
+def sync_player_photos(*, force: bool = False, batch_size: int = 60) -> dict:
+    """Attach real player headshots.
+
+    Prefer TheSportsDB cutouts (no key required). Also try API-Football squads when
+    API_FOOTBALL_KEY is configured. Processes up to ``batch_size`` missing photos
+    per call so boot/scheduler can finish gradually.
     """
-    af = ApiFootballClient()
-    if not af.api_key:
-        return {"updated": 0, "warning": "API_FOOTBALL_KEY not set"}
-
-    missing = Player.query.filter(Player.photo_url.is_(None)).count()
-    if not force and missing == 0:
-        return {"updated": 0, "skipped": True, "reason": "all players already have photos"}
-
-    quota = ApiFootballClient.get_quota_usage()
-    if quota["remaining"] < 10:
-        return {"updated": 0, "warning": f"API-Football quota too low ({quota['remaining']} left)"}
-
-    teams = af.get_teams()
-    if not teams:
-        return {"updated": 0, "warning": "No API-Football WC teams returned"}
+    query = Player.query
+    if not force:
+        query = query.filter(Player.photo_url.is_(None))
+    missing_players = query.order_by(Player.id.asc()).limit(batch_size).all()
+    remaining_before = Player.query.filter(Player.photo_url.is_(None)).count()
 
     updated = 0
+    tsdb_hits = 0
+    af_hits = 0
+
+    # 1) TheSportsDB for this batch
+    for player in missing_players:
+        if player.photo_url and not force:
+            continue
+        nation = player.country.name if player.country else None
+        photo = _thesportsdb_photo(player.name, nation)
+        time.sleep(0.25)
+        if photo:
+            player.photo_url = photo
+            updated += 1
+            tsdb_hits += 1
+    db.session.commit()
+
+    # 2) API-Football national squads (fills more + links api ids)
+    af = ApiFootballClient()
     linked = 0
     teams_matched = 0
+    if af.api_key:
+        quota = ApiFootballClient.get_quota_usage()
+        if quota["remaining"] >= 10:
+            # Resolve national team per country that still needs photos
+            countries = (
+                db.session.query(Country)
+                .join(Player, Player.country_id == Country.id)
+                .filter(Player.photo_url.is_(None) if not force else True)
+                .distinct()
+                .limit(20)
+                .all()
+            )
+            for country in countries:
+                data = af._get(
+                    "teams",
+                    f"af:teams:name:{_normalize_name(country.name)}",
+                    86400,
+                    params={"name": country.name},
+                )
+                if not data:
+                    continue
+                national = None
+                for entry in data.get("response") or []:
+                    team = _af_team_payload(entry)
+                    if team.get("national") is True or _normalize_name(team.get("name", "")) == _normalize_name(country.name):
+                        national = team
+                        if team.get("national") is True:
+                            break
+                if not national or not national.get("id"):
+                    continue
+                teams_matched += 1
+                if national.get("flag") and not country.flag_url:
+                    country.flag_url = national.get("flag")
+                squad = af.get_squad(national["id"]) or []
+                for member in squad:
+                    api_id = member.get("id")
+                    name = member.get("name") or ""
+                    if not api_id:
+                        continue
+                    position = ApiFootballClient.map_position(member.get("position"))
+                    photo = member.get("photo") or PHOTO_CDN.format(api_id)
+                    player = _find_player_loose(api_id, name, country.id, position)
+                    if not player:
+                        continue
+                    if not player.api_football_id:
+                        player.api_football_id = api_id
+                        linked += 1
+                    if force or not player.photo_url:
+                        player.photo_url = photo
+                        updated += 1
+                        af_hits += 1
+                db.session.commit()
 
-    for entry in teams:
-        team = _af_team_payload(entry)
-        team_id = team.get("id")
-        if not team_id:
-            continue
-
-        country = None
-        if team.get("code"):
-            country = Country.query.filter(
-                db.func.lower(Country.code) == str(team.get("code")).lower()
-            ).first()
-        if not country:
-            country = _find_country_by_name(team.get("name") or "")
-        if not country and team.get("country"):
-            country = _find_country_by_name(team.get("country"))
-        if not country:
-            logger.debug("No country match for AF team %s", team.get("name"))
-            continue
-
-        if team.get("flag") and not country.flag_url:
-            country.flag_url = team.get("flag")
-
-        teams_matched += 1
-        squad = af.get_squad(team_id) or []
-        for member in squad:
-            api_id = member.get("id")
-            name = member.get("name") or ""
-            if not api_id:
-                continue
-            position = ApiFootballClient.map_position(member.get("position"))
-            photo = member.get("photo") or PHOTO_CDN.format(api_id)
-
-            player = _find_player_for_api_stat(api_id, name, country.id, position)
-            if not player:
-                continue
-
-            changed = False
-            if not player.api_football_id:
-                player.api_football_id = api_id
-                linked += 1
-                changed = True
-            if force or not player.photo_url:
-                player.photo_url = photo
-                updated += 1
-                changed = True
-            if changed:
-                pass
-
-        db.session.commit()
-
+    remaining = Player.query.filter(Player.photo_url.is_(None)).count()
     return {
         "updated": updated,
+        "thesportsdb": tsdb_hits,
+        "api_football": af_hits,
         "linked": linked,
         "teams_matched": teams_matched,
-        "source": "api-football",
-        "quota": ApiFootballClient.get_quota_usage(),
+        "remaining": remaining,
+        "remaining_before": remaining_before,
+        "batch_size": batch_size,
     }
 
 
