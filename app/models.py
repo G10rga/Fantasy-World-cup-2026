@@ -107,7 +107,7 @@ class Player(db.Model):
     match_stats = db.relationship("PlayerMatchStat", back_populates="player", lazy="dynamic")
 
     def to_dict(self, extra=None):
-        photo = self.photo_url or None
+        photo = self.photo_url if self.photo_url and self.photo_url not in ("", "-") else None
         if not photo and self.api_football_id:
             photo = f"https://media.api-sports.io/football/players/{self.api_football_id}.png"
         data = {

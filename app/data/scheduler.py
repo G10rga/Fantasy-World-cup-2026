@@ -36,17 +36,15 @@ def sync_finished_stats_job():
 
 
 def sync_player_photos_job():
-    from app.data.sync import sync_player_photos
-    from app.models import Player
+    from app.data.sync import _photo_stats, sync_player_photos
 
     try:
-        untried = Player.query.filter(Player.photo_url.is_(None)).count()
-        if untried > 0:
+        stats = _photo_stats()
+        if stats["untried"] > 0:
             result = sync_player_photos(batch_size=50)
             logger.info("Player photos sync: %s", result)
             return
-        no_match = Player.query.filter(Player.photo_url == "").count()
-        if no_match > 0:
+        if stats["no_match"] > 0:
             result = sync_player_photos(batch_size=40, retry_failed=True)
             logger.info("Player photos retry: %s", result)
     except Exception as exc:

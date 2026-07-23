@@ -177,6 +177,29 @@ def _sync_wc26_players_from_football_data(wc26_countries) -> tuple[int, str | No
 
 PHOTO_CDN = "https://media.api-sports.io/football/players/{}.png"
 THESPORTSDB_SEARCH = "https://www.thesportsdb.com/api/v1/json/3/searchplayers.php"
+# Stored when SportsDB has no usable headshot (after first try / retry).
+PHOTO_NONE = "-"
+
+
+def _has_real_photo(url: str | None) -> bool:
+    return bool(url) and url not in ("", PHOTO_NONE)
+
+
+def _photo_stats() -> dict:
+    with_photo = Player.query.filter(
+        Player.photo_url.isnot(None),
+        Player.photo_url != "",
+        Player.photo_url != PHOTO_NONE,
+    ).count()
+    untried = Player.query.filter(Player.photo_url.is_(None)).count()
+    no_match = Player.query.filter(Player.photo_url == "").count()
+    exhausted = Player.query.filter(Player.photo_url == PHOTO_NONE).count()
+    return {
+        "with_photo": with_photo,
+        "untried": untried,
+        "no_match": no_match,
+        "exhausted": exhausted,
+    }
 
 
 def _af_team_payload(entry: dict) -> dict:
@@ -272,7 +295,9 @@ def ensure_player_photos(players: list, *, limit: int = 20, retry_failed: bool =
     for player in players:
         if player is None:
             continue
-        if player.photo_url:  # real URL already
+        if _has_real_photo(player.photo_url):
+            continue
+        if player.photo_url == PHOTO_NONE and not retry_failed:
             continue
         if player.photo_url == "" and not retry_failed:
             continue
@@ -286,7 +311,8 @@ def ensure_player_photos(players: list, *, limit: int = 20, retry_failed: bool =
     def fetch_one(item: tuple[Player, str | None]):
         player, nation = item
         photo = _thesportsdb_photo(player.name, nation)
-        return player.id, photo or ""
+        # On demand / retry: mark exhausted if still nothing
+        return player.id, photo or PHOTO_NONE
 
     results: dict[int, str] = {}
     workers = min(8, len(todo))
@@ -306,7 +332,7 @@ def ensure_player_photos(players: list, *, limit: int = 20, retry_failed: bool =
         if not player:
             continue
         player.photo_url = photo
-        if photo:
+        if _has_real_photo(photo):
             updated += 1
     db.session.commit()
     return updated
@@ -343,9 +369,10 @@ def sync_player_photos(*, force: bool = False, batch_size: int = 60, retry_faile
     API_FOOTBALL_KEY is configured. Processes up to ``batch_size`` missing photos
     per call so boot/scheduler can finish gradually.
 
-    ``photo_url is None`` = not tried yet.
-    ``photo_url == ""`` = tried, no match found.
-    non-empty ``photo_url`` = real headshot URL.
+    ``photo_url is None`` = not tried yet
+    ``photo_url == ""`` = first pass found nothing (eligible for one retry)
+    ``photo_url == "-"`` = retry also found nothing (stop trying)
+    non-empty URL = real headshot
     """
     query = Player.query
     if force:
@@ -363,17 +390,29 @@ def sync_player_photos(*, force: bool = False, batch_size: int = 60, retry_faile
 
     # 1) TheSportsDB for this batch
     for player in missing_players:
-        if player.photo_url is not None and not force:
+        if force:
+            pass
+        elif retry_failed:
+            if player.photo_url != "":
+                continue
+        elif player.photo_url is not None:
             continue
+
         nation = player.country.name if player.country else None
         photo = _thesportsdb_photo(player.name, nation)
-        time.sleep(0.2)
-        # Empty string = attempted, no photo found (so we don't retry forever)
-        player.photo_url = photo or ""
+        time.sleep(0.15)
+        # First miss -> ""; after retry miss -> "-" so we never loop forever
         if photo:
+            player.photo_url = photo
             updated += 1
             tsdb_hits += 1
+        else:
+            player.photo_url = PHOTO_NONE if retry_failed else ""
     db.session.commit()
+    try:
+        db.session.remove()
+    except Exception:
+        pass
 
     # 2) API-Football national squads (fills more + links api ids)
     af = ApiFootballClient()
@@ -383,7 +422,11 @@ def sync_player_photos(*, force: bool = False, batch_size: int = 60, retry_faile
         quota = ApiFootballClient.get_quota_usage()
         if quota["remaining"] >= 10:
             # Resolve national team per country that still needs photos
-            photo_missing = (Player.photo_url.is_(None)) | (Player.photo_url == "")
+            photo_missing = (
+                Player.photo_url.is_(None)
+                | (Player.photo_url == "")
+                | (Player.photo_url == PHOTO_NONE)
+            )
             countries_q = (
                 db.session.query(Country)
                 .join(Player, Player.country_id == Country.id)
@@ -427,25 +470,24 @@ def sync_player_photos(*, force: bool = False, batch_size: int = 60, retry_faile
                     if not player.api_football_id:
                         player.api_football_id = api_id
                         linked += 1
-                    if force or not player.photo_url:
+                    if force or not _has_real_photo(player.photo_url):
                         player.photo_url = photo
                         updated += 1
                         af_hits += 1
                 db.session.commit()
 
-    remaining_untried = Player.query.filter(Player.photo_url.is_(None)).count()
-    no_match = Player.query.filter(Player.photo_url == "").count()
-    with_photo = Player.query.filter(Player.photo_url.isnot(None), Player.photo_url != "").count()
+    stats = _photo_stats()
     return {
         "updated": updated,
         "thesportsdb": tsdb_hits,
         "api_football": af_hits,
         "linked": linked,
         "teams_matched": teams_matched,
-        "remaining_untried": remaining_untried,
-        "remaining": remaining_untried,  # back-compat for older log readers
-        "no_match": no_match,
-        "with_photo": with_photo,
+        "remaining_untried": stats["untried"],
+        "remaining": stats["untried"],
+        "no_match": stats["no_match"],
+        "exhausted": stats["exhausted"],
+        "with_photo": stats["with_photo"],
         "remaining_before": remaining_before,
         "batch_size": batch_size,
         "retry_failed": retry_failed,

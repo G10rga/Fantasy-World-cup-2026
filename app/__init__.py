@@ -134,27 +134,26 @@ def create_app(config_name=None):
                     else:
                         print("AUTO_SYNC: skipped (players already present)", flush=True)
 
-                    # Always (re)scan for better coverage: untried first, then retry empty matches
-                    untried = Player.query.filter(Player.photo_url.is_(None)).count()
-                    no_match = Player.query.filter(Player.photo_url == "").count()
-                    with_photo = Player.query.filter(
-                        Player.photo_url.isnot(None), Player.photo_url != ""
-                    ).count()
-                    if untried > 0 or no_match > 0:
+                    # Always (re)scan for better coverage: untried first, then one retry of empties
+                    from app.data.sync import _photo_stats
+
+                    stats = _photo_stats()
+                    if stats["untried"] > 0 or stats["no_match"] > 0:
                         print(
                             f"AUTO_SYNC: starting photo sync "
-                            f"(have={with_photo}, untried={untried}, no_match={no_match})…",
+                            f"(have={stats['with_photo']}, untried={stats['untried']}, "
+                            f"no_match={stats['no_match']}, exhausted={stats['exhausted']})…",
                             flush=True,
                         )
 
                         def _photo_worker(app):
                             with app.app_context():
-                                from app.data.sync import sync_player_photos
-                                from app.models import Player as Pl
+                                from app.data.sync import _photo_stats, sync_player_photos
+                                from app import db as _db
 
                                 # Pass 1: never-tried (NULL)
-                                for _ in range(50):
-                                    left = Pl.query.filter(Pl.photo_url.is_(None)).count()
+                                for _ in range(80):
+                                    left = _photo_stats()["untried"]
                                     if left == 0:
                                         break
                                     try:
@@ -162,29 +161,28 @@ def create_app(config_name=None):
                                         print(f"AUTO_SYNC: photos {result}", flush=True)
                                     except Exception as photo_exc:
                                         print(f"AUTO_SYNC: photo batch failed: {photo_exc}", flush=True)
+                                        _db.session.rollback()
                                         break
                                     time.sleep(1)
 
-                                # Pass 2: retry "" with improved name matching
-                                for _ in range(50):
-                                    left = Pl.query.filter(Pl.photo_url == "").count()
+                                # Pass 2: retry "" once; failures become "-" and drop out of the queue
+                                for _ in range(80):
+                                    left = _photo_stats()["no_match"]
                                     if left == 0:
                                         break
                                     try:
-                                        result = sync_player_photos(batch_size=30, retry_failed=True)
+                                        result = sync_player_photos(batch_size=40, retry_failed=True)
                                         print(f"AUTO_SYNC: photos retry {result}", flush=True)
                                     except Exception as photo_exc:
                                         print(f"AUTO_SYNC: photo retry failed: {photo_exc}", flush=True)
+                                        _db.session.rollback()
                                         break
                                     time.sleep(1)
 
-                                have = Pl.query.filter(
-                                    Pl.photo_url.isnot(None), Pl.photo_url != ""
-                                ).count()
-                                miss = Pl.query.filter(Pl.photo_url == "").count()
+                                final = _photo_stats()
                                 print(
-                                    f"AUTO_SYNC: photo scan finished — {have} with photos, "
-                                    f"{miss} still no match",
+                                    f"AUTO_SYNC: photo scan finished — {final['with_photo']} with photos, "
+                                    f"{final['exhausted']} no match, {final['untried']} untried",
                                     flush=True,
                                 )
 

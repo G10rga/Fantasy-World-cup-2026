@@ -165,8 +165,14 @@ def sync_photos_now():
     if raw_ids:
         players = Player.query.filter(Player.id.in_(raw_ids)).all()
         ensured = ensure_player_photos(players, limit=len(players))
-    missing = Player.query.filter(Player.photo_url.is_(None)).count()
-    with_photo = Player.query.filter(Player.photo_url.isnot(None), Player.photo_url != "").count()
+    missing = Player.query.filter(
+        (Player.photo_url.is_(None)) | (Player.photo_url == "") | (Player.photo_url == "-")
+    ).count()
+    with_photo = Player.query.filter(
+        Player.photo_url.isnot(None),
+        Player.photo_url != "",
+        Player.photo_url != "-",
+    ).count()
     return _success({
         "batch": batch,
         "ensured": ensured,
