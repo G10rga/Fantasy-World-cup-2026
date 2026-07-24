@@ -556,6 +556,31 @@ def list_countries():
 
 # ── Admin / Sync ───────────────────────────────────────────────────────────
 
+@fantasy_bp.route("/api/admin/overview", methods=["GET"])
+@login_required
+def admin_overview():
+    """Dashboard snapshot: counts + API-Football quota + photo coverage."""
+    err = _admin_required()
+    if err:
+        return err
+
+    from app.data.api_football import ApiFootballClient
+    from app.data.sync import _photo_stats
+    from app.models import Country, Fixture, User
+
+    photos = _photo_stats()
+    return _success({
+        "users": User.query.count(),
+        "players": Player.query.count(),
+        "countries": Country.query.count(),
+        "fixtures": Fixture.query.count(),
+        "admins": User.query.filter_by(is_admin=True).count(),
+        "photos": photos,
+        "api_football_quota": ApiFootballClient.get_quota_usage(),
+        "current_matchday": get_current_matchday(),
+    })
+
+
 @fantasy_bp.route("/api/admin/players/missing-photos", methods=["GET"])
 @login_required
 def admin_missing_photos():

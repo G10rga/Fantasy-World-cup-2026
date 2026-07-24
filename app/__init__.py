@@ -283,6 +283,25 @@ def register_page_routes(app):
     def leaderboard_page():
         return render_template("fantasy/leaderboard.html")
 
+    @app.route("/account")
+    def account_page():
+        return render_template("fantasy/account.html")
+
+    @app.route("/admin")
+    def admin_page():
+        from flask import abort, redirect, url_for
+        from flask_login import current_user
+
+        if not current_user.is_authenticated:
+            return redirect(url_for("login_page_redirect"))
+        # Refresh flag from ADMIN_EMAILS in case env changed after register
+        from app.auth.routes import _sync_admin_flag
+
+        _sync_admin_flag(current_user)
+        if not current_user.is_admin:
+            abort(403)
+        return render_template("fantasy/admin.html")
+
     @app.route("/login")
     def login_page_redirect():
         return render_template("auth/login.html")

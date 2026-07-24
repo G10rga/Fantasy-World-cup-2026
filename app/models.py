@@ -51,6 +51,7 @@ class User(UserMixin, db.Model):
             "total_points": self.total_points,
             "overall_rank": self.overall_rank,
             "country_rank": self.country_rank,
+            "is_admin": bool(self.is_admin),
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 

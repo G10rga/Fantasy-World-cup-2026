@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Account — World Cup Fantasy 2026{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-8">
+  <header>
+    <p class="font-label-caps text-label-caps text-primary uppercase tracking-wider mb-2">Manager</p>
+    <h1 class="font-display-lg text-headline-lg-mobile md:text-display-lg text-on-surface uppercase tracking-tight">Account</h1>
+    <p class="mt-2 font-body-md text-body-md text-on-surface-variant">Your profile and account controls.</p>
+  </header>
+
+  <section class="border-t border-outline-variant pt-6 space-y-3" id="account-profile">
+    <h2 class="font-headline-md text-headline-md uppercase text-on-surface">Profile</h2>
+    <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 font-body-sm text-body-sm">
+      <div>
+        <dt class="text-on-surface-variant uppercase font-label-caps text-label-caps mb-1">Username</dt>
+        <dd id="acc-username" class="text-on-surface text-base">—</dd>
+      </div>
+      <div>
+        <dt class="text-on-surface-variant uppercase font-label-caps text-label-caps mb-1">Email</dt>
+        <dd id="acc-email" class="text-on-surface text-base break-all">—</dd>
+      </div>
+      <div>
+        <dt class="text-on-surface-variant uppercase font-label-caps text-label-caps mb-1">Points</dt>
+        <dd id="acc-points" class="text-primary font-stat-md text-stat-md">—</dd>
+      </div>
+      <div>
+        <dt class="text-on-surface-variant uppercase font-label-caps text-label-caps mb-1">Role</dt>
+        <dd id="acc-role" class="text-on-surface text-base">—</dd>
+      </div>
+    </dl>
+  </section>
+
+  <section class="border-t border-outline-variant pt-6 space-y-4">
+    <h2 class="font-headline-md text-headline-md uppercase text-danger">Delete account</h2>
+    <p class="font-body-sm text-body-sm text-on-surface-variant">
+      Permanently removes your squad, transfers, booster history, and mini-league memberships.
+      Leagues you created are deleted for everyone. This cannot be undone.
+    </p>
+    <form id="delete-account-form" class="space-y-4" autocomplete="off">
+      <div>
+        <label for="delete-password" class="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-2">Password</label>
+        <input id="delete-password" type="password" required
+               class="w-full bg-surface-container border border-outline-variant rounded-lg px-4 py-3 text-on-surface focus:outline-none focus:border-primary"
+               placeholder="Confirm with your password">
+      </div>
+      <div>
+        <label for="delete-confirm" class="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-2">Type DELETE to confirm</label>
+        <input id="delete-confirm" type="text" required
+               class="w-full bg-surface-container border border-outline-variant rounded-lg px-4 py-3 text-on-surface focus:outline-none focus:border-danger"
+               placeholder="DELETE" autocomplete="off">
+      </div>
+      <p id="delete-error" class="hidden text-danger font-body-sm text-body-sm"></p>
+      <button type="submit"
+              class="bg-danger text-white font-body-md text-body-md font-bold py-3 px-6 rounded-lg hover:brightness-110 transition-all disabled:opacity-50">
+        Delete my account
+      </button>
+    </form>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/account.js') }}"></script>
+{% endblock %}

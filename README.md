@@ -12,6 +12,8 @@ Live: [https://fantasy.g1orga.dev](https://fantasy.g1orga.dev)
 
 - **Welcome guide** — guests and managers without a squad land on `/`; managers with a squad go to the dashboard (`/dashboard` always available)
 - **Squad builder** — pick a formation, fill the XI slot-by-slot, then unlock 4 bench places (2 GK / 5 DEF / 5 MID / 3 FWD total, budget + captain)
+- **Account** — profile page with permanent account deletion (password + typed confirmation)
+- **Admin dashboard** — `/admin` for emails in `ADMIN_EMAILS` (seed/sync/scoring/photos)
 - **Player photos** — headshots from TheSportsDB (primary) and API-Football squads; manual URL overrides; initials fallback (no nation-flag avatars)
 - **Transfers** — free transfers, hit penalties, budget tracking across matchdays
 - **Boosters** — Wildcard, 12th Man, Max Captain, Qualification Booster, Mystery
@@ -167,6 +169,8 @@ No keys needed for worldcup26.ir, TheSportsDB search, or openfootball JSON.
 | `/fixtures` | Everyone | Fixture list |
 | `/leagues` | Managers | Mini-leagues |
 | `/leaderboard` | Everyone | Rankings |
+| `/account` | Managers | Profile + delete account |
+| `/admin` | Admins only | Seed, sync, scoring, and photo tools |
 | `/login`, `/register` | Guests | Auth |
 
 ---
@@ -263,6 +267,8 @@ python scripts/build_player_photos.py                 # AF national squads when 
 
 | Method | Path | Description |
 |--------|------|-------------|
+| GET | `/api/auth/me` | Current user (includes `is_admin`) |
+| DELETE | `/api/auth/account` | Delete account (`password` + `confirm: "DELETE"`) |
 | GET | `/api/meta` | App meta + API-Football quota |
 | GET | `/api/players` | Player list (filters); may kick a small photo fetch |
 | GET | `/api/players/<id>` | Player detail |
@@ -282,6 +288,7 @@ python scripts/build_player_photos.py                 # AF national squads when 
 ### Admin (email in `ADMIN_EMAILS`)
 
 ```
+GET  /api/admin/overview
 POST /api/admin/seed-db
 POST /api/admin/sync/players
 POST /api/admin/sync/fixtures
@@ -294,6 +301,8 @@ PUT  /api/admin/players/<id>/photo          body: { "photo_url": "https://..." }
 POST /api/admin/players/photos              body: { "photos": [ { "player_id"| "name", "photo_url" }, ... ] }
 POST /api/admin/players/photos/apply-manual ?only_missing=1
 ```
+
+`ADMIN_EMAILS` is re-checked on every login and `/api/auth/me`, so adding your email to the env and logging in again promotes you without re-registering.
 
 Unauthenticated `/api/*` calls return JSON `401` (not an HTML login redirect).
 

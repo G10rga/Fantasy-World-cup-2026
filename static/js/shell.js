@@ -45,6 +45,18 @@
           const rankEl = document.getElementById('sidebar-rank');
           if (rankEl) rankEl.textContent = `Global Rank: #${Number(u.overall_rank).toLocaleString()}`;
         }
+        if (u.is_admin) {
+          const navAdmin = document.getElementById('nav-admin');
+          if (navAdmin) {
+            navAdmin.classList.remove('hidden');
+            navAdmin.classList.add('flex');
+          }
+          const moreAdmin = document.getElementById('more-admin');
+          if (moreAdmin) {
+            moreAdmin.classList.remove('hidden');
+            moreAdmin.classList.add('flex');
+          }
+        }
       }
     } catch (_) { /* guest */ }
   }

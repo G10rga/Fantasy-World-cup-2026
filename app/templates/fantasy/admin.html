@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Admin — World Cup Fantasy 2026{% endblock %}
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-10">
+  <header class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+    <div>
+      <p class="font-label-caps text-label-caps text-primary uppercase tracking-wider mb-2">Restricted</p>
+      <h1 class="font-display-lg text-headline-lg-mobile md:text-display-lg text-on-surface uppercase tracking-tight">Admin</h1>
+      <p class="mt-2 font-body-md text-body-md text-on-surface-variant">Seed, sync, scoring, and photo tools for operators.</p>
+    </div>
+    <div id="admin-quota" class="font-stat-md text-stat-md text-on-surface-variant">API-Football: —</div>
+  </header>
+
+  <section class="grid grid-cols-2 md:grid-cols-4 gap-4" id="admin-kpis">
+    <div class="border-b border-outline-variant pb-3">
+      <p class="font-label-caps text-label-caps text-on-surface-variant uppercase">Users</p>
+      <p id="kpi-users" class="font-display-lg text-headline-lg text-on-surface">—</p>
+    </div>
+    <div class="border-b border-outline-variant pb-3">
+      <p class="font-label-caps text-label-caps text-on-surface-variant uppercase">Players</p>
+      <p id="kpi-players" class="font-display-lg text-headline-lg text-on-surface">—</p>
+    </div>
+    <div class="border-b border-outline-variant pb-3">
+      <p class="font-label-caps text-label-caps text-on-surface-variant uppercase">With photos</p>
+      <p id="kpi-photos" class="font-display-lg text-headline-lg text-primary">—</p>
+    </div>
+    <div class="border-b border-outline-variant pb-3">
+      <p class="font-label-caps text-label-caps text-on-surface-variant uppercase">Matchday</p>
+      <p id="kpi-md" class="font-display-lg text-headline-lg text-on-surface">—</p>
+    </div>
+  </section>
+
+  <section class="space-y-4 border-t border-outline-variant pt-8">
+    <h2 class="font-headline-md text-headline-md uppercase">Tournament data</h2>
+    <p class="font-body-sm text-body-sm text-on-surface-variant">Refresh countries, squads, fixtures, and live scores.</p>
+    <div class="flex flex-wrap gap-3">
+      <button type="button" data-admin-action="seed" class="bg-primary-container text-on-primary-container font-body-md font-bold py-2.5 px-5 rounded-lg hover:brightness-110 transition-all disabled:opacity-50">Seed DB</button>
+      <button type="button" data-admin-action="sync-players" class="bg-primary-container text-on-primary-container font-body-md font-bold py-2.5 px-5 rounded-lg hover:brightness-110 transition-all disabled:opacity-50">Sync players</button>
+      <button type="button" data-admin-action="sync-fixtures" class="bg-primary-container text-on-primary-container font-body-md font-bold py-2.5 px-5 rounded-lg hover:brightness-110 transition-all disabled:opacity-50">Sync fixtures</button>
+      <button type="button" data-admin-action="sync-livescores" class="bg-primary-container text-on-primary-container font-body-md font-bold py-2.5 px-5 rounded-lg hover:brightness-110 transition-all disabled:opacity-50">Sync live scores</button>
+    </div>
+  </section>
+
+  <section class="space-y-4 border-t border-outline-variant pt-8">
+    <h2 class="font-headline-md text-headline-md uppercase">Scoring</h2>
+    <div class="flex flex-col sm:flex-row gap-4 sm:items-end">
+      <div class="flex-1">
+        <label class="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-2">Matchday</label>
+        <input id="admin-matchday" type="number" min="1" class="w-full sm:w-40 bg-surface-container border border-outline-variant rounded-lg px-4 py-3 text-on-surface focus:outline-none focus:border-primary" placeholder="1">
+      </div>
+      <button type="button" data-admin-action="recalculate" class="bg-primary-container text-on-primary-container font-body-md font-bold py-2.5 px-5 rounded-lg hover:brightness-110 transition-all disabled:opacity-50">Recalculate matchday</button>
+    </div>
+    <div class="flex flex-col sm:flex-row gap-4 sm:items-end">
+      <div class="flex-1">
+        <label class="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-2">Fixture ID</label>
+        <input id="admin-fixture-id" type="number" min="1" class="w-full sm:w-40 bg-surface-container border border-outline-variant rounded-lg px-4 py-3 text-on-surface focus:outline-none focus:border-primary" placeholder="123">
+      </div>
+      <button type="button" data-admin-action="sync-stats" class="bg-primary-container text-on-primary-container font-body-md font-bold py-2.5 px-5 rounded-lg hover:brightness-110 transition-all disabled:opacity-50">Sync fixture stats</button>
+    </div>
+  </section>
+
+  <section class="space-y-4 border-t border-outline-variant pt-8">
+    <h2 class="font-headline-md text-headline-md uppercase">Player photos</h2>
+    <div class="flex flex-wrap gap-3">
+      <button type="button" data-admin-action="photos-sync" class="bg-primary-container text-on-primary-container font-body-md font-bold py-2.5 px-5 rounded-lg hover:brightness-110 transition-all disabled:opacity-50">Run photo batch</button>
+      <button type="button" data-admin-action="photos-apply-manual" class="bg-primary-container text-on-primary-container font-body-md font-bold py-2.5 px-5 rounded-lg hover:brightness-110 transition-all disabled:opacity-50">Apply manual map</button>
+      <button type="button" data-admin-action="photos-missing" class="bg-surface-elevated text-primary border border-primary/40 font-body-md font-bold py-2.5 px-5 rounded-lg hover:bg-primary hover:text-on-primary transition-all disabled:opacity-50">List missing</button>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+      <div>
+        <label class="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-2">Player ID</label>
+        <input id="photo-player-id" type="number" class="w-full bg-surface-container border border-outline-variant rounded-lg px-4 py-3 text-on-surface focus:outline-none focus:border-primary" placeholder="3160">
+      </div>
+      <div class="md:col-span-2">
+        <label class="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-2">Photo URL</label>
+        <input id="photo-url" type="url" class="w-full bg-surface-container border border-outline-variant rounded-lg px-4 py-3 text-on-surface focus:outline-none focus:border-primary" placeholder="https://…">
+      </div>
+    </div>
+    <button type="button" data-admin-action="photo-set" class="bg-primary-container text-on-primary-container font-body-md font-bold py-2.5 px-5 rounded-lg hover:brightness-110 transition-all disabled:opacity-50">Set player photo</button>
+    <div id="missing-photos" class="hidden mt-4 max-h-72 overflow-y-auto border-t border-outline-variant pt-4 space-y-1 font-body-sm text-body-sm"></div>
+  </section>
+
+  <section class="border-t border-outline-variant pt-6">
+    <p class="font-label-caps text-label-caps text-on-surface-variant uppercase mb-2">Last result</p>
+    <pre id="admin-log" class="bg-surface-container-lowest border border-outline-variant rounded-lg p-4 text-on-surface-variant font-mono text-xs overflow-x-auto min-h-[6rem] whitespace-pre-wrap">Ready.</pre>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+{% endblock %}

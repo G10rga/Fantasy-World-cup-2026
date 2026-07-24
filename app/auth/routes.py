@@ -3,7 +3,15 @@ from flask_login import current_user, login_required, login_user, logout_user
 
 from app import db
 from app.auth.forms import LoginForm, RegisterForm
-from app.models import Country, User
+from app.models import (
+    BoosterUsage,
+    Country,
+    FantasyTeam,
+    MiniLeague,
+    MiniLeagueStanding,
+    Transfer,
+    User,
+)
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -20,6 +28,40 @@ def _json_error(code, message, details=None, status=400):
     if details:
         payload["details"] = details
     return jsonify(payload), status
+
+
+def _admin_emails() -> list[str]:
+    return [e.lower() for e in current_app.config.get("ADMIN_EMAILS", [])]
+
+
+def _sync_admin_flag(user: User) -> bool:
+    """Keep is_admin aligned with ADMIN_EMAILS (promote or demote on login/me)."""
+    should = user.email.lower() in _admin_emails()
+    if bool(user.is_admin) != should:
+        user.is_admin = should
+        db.session.commit()
+        return True
+    return False
+
+
+def _delete_user_account(user: User) -> None:
+    """Remove a user and all owned fantasy data. Does not touch players/fixtures."""
+    uid = user.id
+
+    created_leagues = MiniLeague.query.filter_by(creator_id=uid).all()
+    for league in created_leagues:
+        MiniLeagueStanding.query.filter_by(league_id=league.id).delete(synchronize_session=False)
+        db.session.delete(league)
+
+    MiniLeagueStanding.query.filter_by(user_id=uid).delete(synchronize_session=False)
+    Transfer.query.filter_by(user_id=uid).delete(synchronize_session=False)
+    BoosterUsage.query.filter_by(user_id=uid).delete(synchronize_session=False)
+
+    for team in FantasyTeam.query.filter_by(user_id=uid).all():
+        db.session.delete(team)  # cascades FantasyTeamPlayer via delete-orphan
+
+    db.session.delete(user)
+    db.session.commit()
 
 
 @auth_bp.route("/login", methods=["GET"])
@@ -62,10 +104,7 @@ def register():
         supported_nation_id=nation_id,
     )
     user.set_password(form.password.data)
-
-    admin_emails = [e.lower() for e in current_app.config.get("ADMIN_EMAILS", [])]
-    if user.email in admin_emails:
-        user.is_admin = True
+    user.is_admin = user.email in _admin_emails()
 
     db.session.add(user)
     db.session.commit()
@@ -88,6 +127,7 @@ def login():
     if not user or not user.check_password(form.password.data):
         return _json_error("INVALID_CREDENTIALS", "Invalid email or password", status=401)
 
+    _sync_admin_flag(user)
     login_user(user, remember=True)
     return _json_success({"user": user.to_dict()})
 
@@ -103,4 +143,27 @@ def logout():
 def me():
     if not current_user.is_authenticated:
         return _json_error("NOT_AUTHENTICATED", "Not logged in", status=401)
+    _sync_admin_flag(current_user)
     return _json_success({"user": current_user.to_dict()})
+
+
+@auth_bp.route("/api/auth/account", methods=["DELETE"])
+@login_required
+def delete_account():
+    """Permanently delete the signed-in account and all fantasy data."""
+    data = request.get_json(silent=True) or {}
+    password = data.get("password") or ""
+    confirm = (data.get("confirm") or "").strip().upper()
+
+    if confirm != "DELETE":
+        return _json_error(
+            "CONFIRMATION_REQUIRED",
+            'Type DELETE in the confirm field to permanently remove your account',
+        )
+    if not current_user.check_password(password):
+        return _json_error("INVALID_CREDENTIALS", "Password is incorrect", status=401)
+
+    user = db.session.get(User, current_user.id)
+    logout_user()
+    _delete_user_account(user)
+    return _json_success({"deleted": True})
